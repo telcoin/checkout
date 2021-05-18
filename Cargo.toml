@@ -1,0 +1,12 @@
+[package]
+name = "checkout"
+version = "0.1.0"
+authors = ["Trevor Wilson <trevor@telco.in>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9.24"
+serde = "1.0.125"
+thiserror = "1.0.24"
+futures03 = { package = "futures", version = "0.3.13", features = ["compat"] }
+secrecy = "0.7.0"
