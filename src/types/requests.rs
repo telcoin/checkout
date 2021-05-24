@@ -1,5 +1,18 @@
 use super::*;
 
+/// The request body to be used to authenticate
+#[derive(Serialize, Debug, Clone)]
+pub struct OAuthTokenRequest {
+    /// Probably "client_credentials"
+    pub grant_type: String,
+
+    /// Determines what endpoints the requested token can access
+    ///
+    /// See [Authentication](https://api-reference.checkout.com/preview/crusoe/#section/Authentication)
+    /// for possible scopes
+    pub scope: String,
+} 
+
 /// Request body for a payment or payout
 ///
 /// To accept payments from cards, digital wallets and many alternative payment

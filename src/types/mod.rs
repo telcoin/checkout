@@ -572,6 +572,7 @@ pub struct RiskResults {
 #[serde(tag = "type")]
 pub enum PaymentProcessedSource {
     /// A debit/credit/etc card
+    #[serde(rename = "card")]
     Card {
         /// The payment source identifier that can be used for subsequent
         /// payments. For new sources, this will only be returned if the
@@ -647,6 +648,7 @@ pub enum PaymentProcessedSource {
 #[serde(tag = "type")]
 pub enum PaymentProcessedDestination {
     /// A debit/credit/etc card
+    #[serde(rename = "card")]
     Card {
         /// The payment source identifier that can be used for subsequent
         /// payments. For new sources, this will only be returned if the
@@ -719,17 +721,19 @@ pub enum PaymentProcessedDestination {
 
 /// A card's type
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CardType {
     Credit,
     Debit,
     Prepaid,
     Charge,
-    #[serde(rename = "Deferred Debit")]
+    #[serde(rename = "DEFERRED DEBIT")]
     DeferredDebit,
 }
 
 /// A card's category
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CardCategory {
     Consumer,
     Commercial,

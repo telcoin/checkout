@@ -1,5 +1,24 @@
 use super::*;
 
+/// The response for a successful authentication
+#[derive(Deserialize, Debug, Clone)]
+pub struct OAuthTokenResponse {
+    /// The token to be used to access endpoints
+    pub access_token: String,
+
+    /// Seconds until expiration
+    pub expires_in: u32,
+
+    /// Probably "Bearer"
+    pub token_type: String,
+
+    /// What endpoints this token is valid to access
+    ///
+    /// See [Authentication](https://api-reference.checkout.com/preview/crusoe/#section/Authentication)
+    /// for possible scopes
+    pub scope: String,
+}
+
 /// Response to create a payment
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]

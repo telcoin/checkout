@@ -9,7 +9,7 @@
 use std::{convert::TryFrom, fmt, str::FromStr};
 
 use futures03::compat::Future01CompatExt;
-use reqwest::{r#async::Client as ReqwestClient, Error as ReqwestError};
+use reqwest::{r#async::Client as ReqwestClient, Error as ReqwestError, r#async::Response, StatusCode};
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -39,11 +39,27 @@ pub enum Error {
     /// An error that was reported by the Checkout API
     Api(ApiError),
 
+    /// Not authorized
+    #[error("Unauthorized")]
+    Unauthorized,
+
+    /// Invalid data was sent
+    InvalidData(ApiError),
+
+    /// To many requests or duplicate request detected
+    #[error("TooManyRequests")]
+    TooManyRequests,
+
+    /// To many requests or duplicate request detected
+    #[error("Unknown({0:?}, {1:?})")]
+    Unknown(StatusCode, String),
+
     /// An error that ocurred during transport
     Transport(#[from] ReqwestError),
 }
 
 /// Could not parse an environment, contains the original string.
+#[derive(Debug)]
 pub struct ParseEnvironmentError(pub String);
 
 /// API environments to differentiate between testing environments and live.
@@ -97,11 +113,20 @@ impl fmt::Display for Environment {
 }
 
 impl Environment {
-    /// Returns the appropriate url depending on the environment
-    pub fn api_url(&self) -> String {
+    /// Returns the appropriate url for the api depending on the environment
+    pub fn api_url(&self) -> &str {
         match self {
-            Environment::Sandbox => "https://api.sandbox.checkout.com".to_string(),
-            Environment::Production => "https://api.checkout.com".to_string(),
+            Environment::Sandbox => "https://api.sandbox.checkout.com",
+            Environment::Production => "https://api.checkout.com",
+        }
+    }
+
+    /// Returns the appropriate url for authentication depending on the
+    /// environment
+    pub fn access_url(&self) -> &str {
+        match self {
+            Environment::Sandbox => "https://access.sandbox.checkout.com",
+            Environment::Production => "https://access.checkout.com",
         }
     }
 }
@@ -110,18 +135,67 @@ impl Environment {
 #[derive(Clone, Debug)]
 pub struct Client {
     http_client: ReqwestClient,
-    url: String,
-    api_secret_key: SecretString,
+    environment: Environment,
+    username: SecretString,
+    password: SecretString,
 }
 
 impl Client {
     /// Creates a new client
     #[must_use]
-    pub fn new(api_secret_key: SecretString, environment: Environment) -> Client {
+    pub fn new(username: SecretString, password: SecretString, environment: Environment) -> Client {
         Client {
             http_client: ReqwestClient::new(),
-            url: environment.api_url(),
-            api_secret_key,
+            environment,
+            username,
+            password,
+        }
+    }
+
+    /// Creates a new `Client` from the following environment variables:
+    ///
+    /// - `CKO_ENVIRONMENT`
+    /// - `CKO_USERNAME`
+    /// - `CKO_PASSWORD`
+    ///
+    /// # Errors
+    ///
+    /// - [`std::env::VarError`]
+    /// - [`Error::ParseEnvironment`]
+    pub fn from_env() -> Result<Client, ParseEnvironmentError> {
+        Ok(Client::new(
+            SecretString::new(std::env::var("CKO_USERNAME").unwrap()),
+            SecretString::new(std::env::var("CKO_PASSWORD").unwrap()),
+            std::env::var("CKO_ENVIRONMENT").unwrap().parse()?,
+        ))
+    }
+
+    async fn authorize(&self) -> Result<String, Error> {
+        let url = format!("{}/connect/token", self.environment.access_url());
+        let body = OAuthTokenRequest {
+            grant_type: "client_credentials".to_string(),
+            scope: "gateway".to_string(),
+        };
+
+        let mut response = self
+            .http_client
+            .post(&url)
+            .basic_auth(
+                self.username.expose_secret(),
+                Some(self.password.expose_secret()),
+            )
+            .form(&body)
+            .send()
+            .compat()
+            .await?;
+
+        let status = response.status();
+        match status {
+            StatusCode::OK => {
+                let body: OAuthTokenResponse = response.json().compat().await?;
+                Ok(body.access_token)
+            }
+            _ => Err(Error::Unauthorized),
         }
     }
 
@@ -129,10 +203,12 @@ impl Client {
     where
         R: DeserializeOwned,
     {
+        let token = self.authorize().await?;
+
         let mut response = self
             .http_client
             .get(url)
-            .header("authorization", self.api_secret_key.expose_secret())
+            .bearer_auth(token)
             .send()
             .compat()
             .await?;
@@ -149,10 +225,12 @@ impl Client {
         B: Serialize,
         R: DeserializeOwned,
     {
+        let token = self.authorize().await?;
+
         let mut response = self
             .http_client
             .post(url)
-            .header("authorization", self.api_secret_key.expose_secret())
+            .bearer_auth(token)
             .json(body)
             .send()
             .compat()
@@ -165,14 +243,32 @@ impl Client {
         }
     }
 
+    async fn send_post_request_2<B>(&self, url: &str, body: &B) -> Result<Response, Error>
+    where
+        B: Serialize,
+    {
+        let token = self.authorize().await?;
+
+        self.http_client
+            .post(url)
+            .bearer_auth(token)
+            .json(body)
+            .send()
+            .compat()
+            .await
+            .map_err(Error::from)
+    }
+
     async fn send_patch_request_no_response_body<B>(&self, url: &str, body: &B) -> Result<(), Error>
     where
         B: Serialize,
     {
+        let token = self.authorize().await?;
+
         let mut response = self
             .http_client
             .patch(url)
-            .header("authorization", self.api_secret_key.expose_secret())
+            .bearer_auth(token)
             .json(body)
             .send()
             .compat()
@@ -186,10 +282,12 @@ impl Client {
     }
 
     async fn send_delete_request(&self, url: &str) -> Result<(), Error> {
+        let token = self.authorize().await?;
+
         let mut response = self
             .http_client
             .delete(url)
-            .header("authorization", self.api_secret_key.expose_secret())
+            .bearer_auth(token)
             .send()
             .compat()
             .await?;
@@ -218,8 +316,32 @@ impl Client {
         &self,
         request: &CreatePaymentRequest,
     ) -> Result<CreatePaymentResponse, Error> {
-        let url = format!("{}/payments", self.url);
-        self.send_post_request(&url, request).await
+        let url = format!("{}/payments", self.environment.api_url());
+        let mut response = self.send_post_request_2(&url, request).await?;
+
+        let status = response.status();
+        match status {
+            StatusCode::CREATED => { 
+                let body = response.json().compat().await?;
+                Ok(CreatePaymentResponse::Processed(body))
+            },
+            StatusCode::ACCEPTED => {
+                let body = response.json().compat().await?;
+                Ok(CreatePaymentResponse::Pending(body))
+            },
+            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
+            StatusCode::UNPROCESSABLE_ENTITY => {
+                let body = response.json().compat().await?;
+                Err(Error::InvalidData(body))
+            },
+            StatusCode::TOO_MANY_REQUESTS => {
+                Err(Error::TooManyRequests)
+            },
+            code => {
+                let body = response.text().compat().await?;
+                Err(Error::Unknown(code, body))
+            }
+        }
     }
 
     /// Get payment details
@@ -237,7 +359,11 @@ impl Client {
         &self,
         request: &GetPaymentDetailsRequest,
     ) -> Result<GetPaymentDetailsResponse, Error> {
-        let url = format!("{}/payments/{}", self.url, request.payment_id);
+        let url = format!(
+            "{}/payments/{}",
+            self.environment.api_url(),
+            request.payment_id
+        );
         self.send_get_request(&url).await
     }
 
@@ -251,7 +377,11 @@ impl Client {
         &self,
         request: &GetPaymentActionsRequest,
     ) -> Result<GetPaymentActionsResponse, Error> {
-        let url = format!("{}/payments/{}/actions", self.url, request.payment_id);
+        let url = format!(
+            "{}/payments/{}/actions",
+            self.environment.api_url(),
+            request.payment_id
+        );
         self.send_get_request(&url).await
     }
 
@@ -267,7 +397,11 @@ impl Client {
         &self,
         request: &CapturePaymentRequest,
     ) -> Result<CapturePaymentResponse, Error> {
-        let url = format!("{}/payments/{}/captures", self.url, request.payment_id);
+        let url = format!(
+            "{}/payments/{}/captures",
+            self.environment.api_url(),
+            request.payment_id
+        );
         self.send_post_request(&url, &request.body).await
     }
 
@@ -283,7 +417,11 @@ impl Client {
         &self,
         request: &RefundPaymentRequest,
     ) -> Result<RefundPaymentResponse, Error> {
-        let url = format!("{}/payments/{}/refunds", self.url, request.payment_id);
+        let url = format!(
+            "{}/payments/{}/refunds",
+            self.environment.api_url(),
+            request.payment_id
+        );
         self.send_post_request(&url, &request.body).await
     }
 
@@ -299,7 +437,11 @@ impl Client {
         &self,
         request: &VoidPaymentRequest,
     ) -> Result<VoidPaymentResponse, Error> {
-        let url = format!("{}/payments/{}/voids", self.url, request.payment_id);
+        let url = format!(
+            "{}/payments/{}/voids",
+            self.environment.api_url(),
+            request.payment_id
+        );
         self.send_post_request(&url, &request.body).await
     }
 
@@ -314,7 +456,7 @@ impl Client {
         &self,
         request: &CreateCustomerRequest,
     ) -> Result<CreateCustomerResponse, Error> {
-        let url = format!("{}/customers", self.url);
+        let url = format!("{}/customers", self.environment.api_url());
         self.send_post_request(&url, &request).await
     }
 
@@ -327,7 +469,11 @@ impl Client {
         &self,
         request: &GetCustomerDetailsRequest,
     ) -> Result<GetCustomerDetailsResponse, Error> {
-        let url = format!("{}/customers/{}", self.url, request.customer_id_or_email);
+        let url = format!(
+            "{}/customers/{}",
+            self.environment.api_url(),
+            request.customer_id_or_email
+        );
         self.send_get_request(&url).await
     }
 
@@ -340,7 +486,11 @@ impl Client {
         &self,
         request: &UpdateCustomerDetailsRequest,
     ) -> Result<(), Error> {
-        let url = format!("{}/customers/{}", self.url, request.customer_id);
+        let url = format!(
+            "{}/customers/{}",
+            self.environment.api_url(),
+            request.customer_id
+        );
         self.send_patch_request_no_response_body(&url, &request.body)
             .await
     }
@@ -351,7 +501,78 @@ impl Client {
     ///
     /// [`DELETE /customers/{id}`](https://api-reference.checkout.com/#operation/deleteCustomerDetails)
     pub async fn delete_customer(&self, request: &DeleteCustomerRequest) -> Result<(), Error> {
-        let url = format!("{}/customers/{}", self.url, request.customer_id);
+        let url = format!(
+            "{}/customers/{}",
+            self.environment.api_url(),
+            request.customer_id
+        );
         self.send_delete_request(&url).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures03::future::{FutureExt, TryFutureExt};
+    use once_cell::sync::OnceCell;
+    use rand::Rng;
+    use tokio::runtime::Runtime;
+
+    use super::*;
+
+    fn client() -> &'static Client {
+        static INSTANCE: OnceCell<Client> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            let dotenv_var = |key: &str| SecretString::new(dotenv::var(key).expect(key));
+            Client::new(
+                dotenv_var("CKO_USERNAME"),
+                dotenv_var("CKO_PASSWORD"),
+                Environment::Sandbox,
+            )
+        })
+    }
+
+    #[test]
+    fn can_request_payout() {
+        let mut rt = Runtime::new().unwrap();
+
+        let payment: &'static _ = Box::leak(Box::new(CreatePaymentRequest {
+            source: Some(PaymentRequestSource::Card {
+                number: "4242424242424242".to_string(),
+                expiry_month: 6,
+                expiry_year: 2025,
+                name: None,
+                cvv: None,
+                stored: None,
+                billing_address: None,
+                phone: None,
+            }),
+            destination: None,
+            amount: Some(2000),
+            currency: "USD".to_string(),
+            payment_type: PaymentType::Regular,
+            merchant_initiated: false,
+            reference: None,
+            description: None,
+            capture: None,
+            capture_on: None,
+            customer: None,
+            billing_descriptor: None,
+            shipping: None,
+            three_ds: None,
+            previous_payment_id: None,
+            risk: None,
+            success_url: None,
+            failure_url: None,
+            payment_ip: None,
+            recipient: None,
+            processing: None,
+            metadata: None,
+        }));
+
+        let response = rt
+            .block_on(client().create_payment(payment).boxed().compat())
+            .unwrap();
+
+        println!("{:?}", response);
     }
 }
