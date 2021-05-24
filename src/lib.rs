@@ -259,46 +259,6 @@ impl Client {
             .map_err(Error::from)
     }
 
-    async fn send_patch_request_no_response_body<B>(&self, url: &str, body: &B) -> Result<(), Error>
-    where
-        B: Serialize,
-    {
-        let token = self.authorize().await?;
-
-        let mut response = self
-            .http_client
-            .patch(url)
-            .bearer_auth(token)
-            .json(body)
-            .send()
-            .compat()
-            .await?;
-
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(Error::Api(response.json().compat().await?))
-        }
-    }
-
-    async fn send_delete_request(&self, url: &str) -> Result<(), Error> {
-        let token = self.authorize().await?;
-
-        let mut response = self
-            .http_client
-            .delete(url)
-            .bearer_auth(token)
-            .send()
-            .compat()
-            .await?;
-
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(Error::Api(response.json().compat().await?))
-        }
-    }
-
     /// Request a payment or payout
     ///
     /// To accept payments from cards, digital wallets and many alternative
@@ -444,77 +404,12 @@ impl Client {
         );
         self.send_post_request(&url, &request.body).await
     }
-
-    /// Create a customer
-    ///
-    /// Create a customer which can be linked to one or more payment
-    /// instruments, and can be passed as a source when making a payment, using
-    /// the customer’s default instrument.
-    ///
-    /// [`POST /customers`](https://api-reference.checkout.com/#operation/createCustomer)
-    pub async fn create_customer(
-        &self,
-        request: &CreateCustomerRequest,
-    ) -> Result<CreateCustomerResponse, Error> {
-        let url = format!("{}/customers", self.environment.api_url());
-        self.send_post_request(&url, &request).await
-    }
-
-    /// Get customer details
-    ///
-    /// Returns details of a customer and their instruments
-    ///
-    /// [`GET /customers/{id}`](https://api-reference.checkout.com/#operation/getCustomerDetails)
-    pub async fn get_customer_details(
-        &self,
-        request: &GetCustomerDetailsRequest,
-    ) -> Result<GetCustomerDetailsResponse, Error> {
-        let url = format!(
-            "{}/customers/{}",
-            self.environment.api_url(),
-            request.customer_id_or_email
-        );
-        self.send_get_request(&url).await
-    }
-
-    /// Update customer details
-    ///
-    /// Update details of a customer
-    ///
-    /// [`PATCH /customers/{id}`](https://api-reference.checkout.com/#operation/updateCustomerDetails)
-    pub async fn update_customer_details(
-        &self,
-        request: &UpdateCustomerDetailsRequest,
-    ) -> Result<(), Error> {
-        let url = format!(
-            "{}/customers/{}",
-            self.environment.api_url(),
-            request.customer_id
-        );
-        self.send_patch_request_no_response_body(&url, &request.body)
-            .await
-    }
-
-    /// Delete a customer
-    ///
-    /// Delete a customer and all of their linked payment instruments
-    ///
-    /// [`DELETE /customers/{id}`](https://api-reference.checkout.com/#operation/deleteCustomerDetails)
-    pub async fn delete_customer(&self, request: &DeleteCustomerRequest) -> Result<(), Error> {
-        let url = format!(
-            "{}/customers/{}",
-            self.environment.api_url(),
-            request.customer_id
-        );
-        self.send_delete_request(&url).await
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use futures03::future::{FutureExt, TryFutureExt};
     use once_cell::sync::OnceCell;
-    use rand::Rng;
     use tokio::runtime::Runtime;
 
     use super::*;

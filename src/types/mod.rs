@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -841,68 +843,4 @@ pub enum ActionType {
     Capture,
     Refund,
     Payout,
-}
-
-/// A payment instrument can be used later as the source or destination for one
-/// or more payments.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Instrument {
-    /// The ID of the instrument
-    pub id: String,
-
-    /// The instrument type
-    #[serde(rename = "type")]
-    pub ty: String,
-
-    /// A token that can uniquely identify this card across all customers
-    pub fingerprint: String,
-
-    /// The expiry month (1-2 characters)
-    pub expiry_month: u32,
-
-    /// The expiry year (4 characters)
-    pub expiry_year: u32,
-
-    /// The name of the cardholder
-    pub name: Option<String>,
-
-    /// The card scheme
-    pub scheme: Option<String>,
-
-    /// The last four digits of the card number (4 characters)
-    pub last4: String,
-
-    /// The card issuer's bank identification number (BIN)
-    pub bin: String,
-
-    /// The card type
-    pub card_type: Option<CardType>,
-
-    /// The card category
-    pub card_category: Option<CardCategory>,
-
-    /// The name of the card issuer
-    pub issuer: Option<String>,
-
-    /// The card issuer's country (two-letter ISO code)
-    pub issuer_country: Option<String>,
-
-    /// The issuer/card scheme product identifier
-    pub product_id: Option<String>,
-
-    /// The issuer/card scheme product type
-    pub product_type: Option<String>,
-
-    /// The account holder details
-    pub account_holder: Option<AccountHolderDetails>,
-}
-
-/// The details of an account holder
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AccountHolderDetails {
-    /// The billing address of the account holder
-    pub billing_address: Option<Address>,
-
-    /// The phone number of the account holder
-    pub phone: Option<PhoneNumber>,
 }

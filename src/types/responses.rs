@@ -85,35 +85,3 @@ pub struct VoidPaymentResponse {
     #[serde(rename = "_links")]
     pub links: Option<Links>,
 }
-
-/// Response to create a customer
-#[derive(Deserialize, Debug, Clone)]
-pub struct CreateCustomerResponse {
-    /// The customer's unique identifier (format: `cus_*`)
-    pub id: String,
-}
-
-/// Response to get customer details
-#[derive(Deserialize, Debug, Clone)]
-pub struct GetCustomerDetailsResponse {
-    /// The customer's unique identifier (format: `cus_*`)
-    pub id: String,
-
-    /// The customer's email address
-    pub email: String,
-
-    /// The ID for this customer's default instrument
-    pub default: Option<String>,
-
-    /// The customer's name
-    pub name: Option<String>,
-
-    /// The customer's phone number
-    pub phone: Option<PhoneNumber>,
-
-    /// A set of key-value pairs that is attached to a customer
-    pub metadata: Option<Metadata>,
-
-    /// The details of the instruments linked to this customer
-    pub instruments: Option<Vec<Instrument>>,
-}
