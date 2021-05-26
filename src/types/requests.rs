@@ -122,30 +122,6 @@ pub struct CreatePaymentRequest {
     pub metadata: Option<Metadata>,
 }
 
-/// Request to get payment details
-#[derive(Serialize, Debug, Clone)]
-pub struct GetPaymentDetailsRequest {
-    /// The payment or payment session identifier (format: `pay_*` or `sid_*`)
-    pub payment_id: String,
-}
-
-/// Request to get payment actions
-#[derive(Serialize, Debug, Clone)]
-pub struct GetPaymentActionsRequest {
-    /// The payment identifier (format: `pay_*`)
-    pub payment_id: String,
-}
-
-/// Request to capture a payment
-#[derive(Debug, Clone)]
-pub struct CapturePaymentRequest {
-    /// The payment identifier (format: `pay_*`)
-    pub payment_id: String,
-
-    /// The request body
-    pub body: CapturePaymentBody,
-}
-
 /// Body used in the request to capture a payment
 #[derive(Serialize, Debug, Clone)]
 pub struct CapturePaymentBody {
@@ -162,16 +138,6 @@ pub struct CapturePaymentBody {
     pub metadata: Option<Metadata>,
 }
 
-/// Request to refund a payment
-#[derive(Debug, Clone)]
-pub struct RefundPaymentRequest {
-    /// The payment identifier (format: `pay_*`)
-    pub payment_id: String,
-
-    /// The request body
-    pub body: RefundPaymentBody,
-}
-
 /// Body used in the request to refund a payment
 #[derive(Serialize, Debug, Clone)]
 pub struct RefundPaymentBody {
@@ -186,16 +152,6 @@ pub struct RefundPaymentBody {
     /// This can be useful for storing additional information in a structured
     /// format
     pub metadata: Option<Metadata>,
-}
-
-/// Request to void a payment
-#[derive(Debug, Clone)]
-pub struct VoidPaymentRequest {
-    /// The payment identifier (format: `pay_*`)
-    pub payment_id: String,
-
-    /// The request body
-    pub body: VoidPaymentBody,
 }
 
 /// Body used in the request to void a payment

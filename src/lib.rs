@@ -317,13 +317,9 @@ impl Client {
     /// [`GET /payments/{id}`](https://api-reference.checkout.com/#operation/getPaymentDetails)
     pub async fn get_payment_details(
         &self,
-        request: &GetPaymentDetailsRequest,
+        payment_id: String,
     ) -> Result<GetPaymentDetailsResponse, Error> {
-        let url = format!(
-            "{}/payments/{}",
-            self.environment.api_url(),
-            request.payment_id
-        );
+        let url = format!("{}/payments/{}", self.environment.api_url(), payment_id);
         self.send_get_request(&url).await
     }
 
@@ -335,12 +331,12 @@ impl Client {
     /// [`GET /payments/{id}/actions`](https://api-reference.checkout.com/#operation/getPaymentActions)
     pub async fn get_payment_actions(
         &self,
-        request: &GetPaymentActionsRequest,
+        payment_id: String,
     ) -> Result<GetPaymentActionsResponse, Error> {
         let url = format!(
             "{}/payments/{}/actions",
             self.environment.api_url(),
-            request.payment_id
+            payment_id
         );
         self.send_get_request(&url).await
     }
@@ -355,14 +351,15 @@ impl Client {
     /// [`POST /payments/{id}/captures`](https://api-reference.checkout.com/#operation/captureAPayment)
     pub async fn capture_payment(
         &self,
-        request: &CapturePaymentRequest,
+        payment_id: String,
+        body: &CapturePaymentBody,
     ) -> Result<CapturePaymentResponse, Error> {
         let url = format!(
             "{}/payments/{}/captures",
             self.environment.api_url(),
-            request.payment_id
+            payment_id
         );
-        self.send_post_request(&url, &request.body).await
+        self.send_post_request(&url, &body).await
     }
 
     /// Refund a payment
@@ -375,14 +372,15 @@ impl Client {
     /// [`POST /payments/{id}/refunds`](https://api-reference.checkout.com/#operation/refundAPayment)
     pub async fn refund_payment(
         &self,
-        request: &RefundPaymentRequest,
+        payment_id: String,
+        body: &RefundPaymentBody,
     ) -> Result<RefundPaymentResponse, Error> {
         let url = format!(
             "{}/payments/{}/refunds",
             self.environment.api_url(),
-            request.payment_id
+            payment_id
         );
-        self.send_post_request(&url, &request.body).await
+        self.send_post_request(&url, &body).await
     }
 
     /// Void a payment
@@ -395,14 +393,15 @@ impl Client {
     /// [`POST /payments/{id}/voids`](https://api-reference.checkout.com/#operation/voidAPayment)
     pub async fn void_payment(
         &self,
-        request: &VoidPaymentRequest,
+        payment_id: String,
+        body: &VoidPaymentBody,
     ) -> Result<VoidPaymentResponse, Error> {
         let url = format!(
             "{}/payments/{}/voids",
             self.environment.api_url(),
-            request.payment_id
+            payment_id
         );
-        self.send_post_request(&url, &request.body).await
+        self.send_post_request(&url, &body).await
     }
 }
 
@@ -516,8 +515,7 @@ mod tests {
         let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 12305);
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = rt
-            .block_on(client().create_payment(payment).boxed().compat());
+        let response = rt.block_on(client().create_payment(payment).boxed().compat());
 
         assert!(matches!(response, Ok(_)));
     }
@@ -527,11 +525,16 @@ mod tests {
     fn payout_request_invalid() {
         let mut rt = Runtime::new().unwrap();
 
-        let payment = create_payment("4242424242424242".to_string(), 6, 2025, Some("100".to_string()), 12312);
+        let payment = create_payment(
+            "4242424242424242".to_string(),
+            6,
+            2025,
+            Some("100".to_string()),
+            12312,
+        );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = rt
-            .block_on(client().create_payment(payment).boxed().compat());
+        let response = rt.block_on(client().create_payment(payment).boxed().compat());
 
         assert!(matches!(response, Ok(_)));
     }
