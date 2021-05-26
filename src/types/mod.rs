@@ -470,7 +470,7 @@ pub struct PendingPayment {
 /// The status of the payment
 ///
 /// See: [Get Payment Details](https://docs.checkout.com/payments/manage-payments/get-payment-details)
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum PaymentStatus {
     Authorized,
     Pending,

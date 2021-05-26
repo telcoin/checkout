@@ -9,7 +9,9 @@
 use std::{convert::TryFrom, fmt, str::FromStr};
 
 use futures03::compat::Future01CompatExt;
-use reqwest::{r#async::Client as ReqwestClient, Error as ReqwestError, r#async::Response, StatusCode};
+use reqwest::{
+    r#async::Client as ReqwestClient, r#async::Response, Error as ReqwestError, StatusCode,
+};
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -281,22 +283,20 @@ impl Client {
 
         let status = response.status();
         match status {
-            StatusCode::CREATED => { 
+            StatusCode::CREATED => {
                 let body = response.json().compat().await?;
                 Ok(CreatePaymentResponse::Processed(body))
-            },
+            }
             StatusCode::ACCEPTED => {
                 let body = response.json().compat().await?;
                 Ok(CreatePaymentResponse::Pending(body))
-            },
+            }
             StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
             StatusCode::UNPROCESSABLE_ENTITY => {
                 let body = response.json().compat().await?;
                 Err(Error::InvalidData(body))
-            },
-            StatusCode::TOO_MANY_REQUESTS => {
-                Err(Error::TooManyRequests)
-            },
+            }
+            StatusCode::TOO_MANY_REQUESTS => Err(Error::TooManyRequests),
             code => {
                 let body = response.text().compat().await?;
                 Err(Error::Unknown(code, body))
@@ -426,23 +426,31 @@ mod tests {
         })
     }
 
-    #[test]
-    fn can_request_payout() {
-        let mut rt = Runtime::new().unwrap();
+    fn create_payment(
+        number: String,
+        month: u32,
+        year: u32,
+        cvv: Option<String>,
+        amount: u64,
+    ) -> CreatePaymentRequest {
+        // The Checkout sandbox uses certain card numbers, expiration dates,
+        // cvvs, and amounts to trigger failure cases.
+        //
+        // https://docs.checkout.com/testing
 
-        let payment: &'static _ = Box::leak(Box::new(CreatePaymentRequest {
+        CreatePaymentRequest {
             source: Some(PaymentRequestSource::Card {
-                number: "4242424242424242".to_string(),
-                expiry_month: 6,
-                expiry_year: 2025,
+                number,
+                expiry_month: month,
+                expiry_year: year,
                 name: None,
-                cvv: None,
+                cvv,
                 stored: None,
                 billing_address: None,
                 phone: None,
             }),
             destination: None,
-            amount: Some(2000),
+            amount: Some(amount),
             currency: "USD".to_string(),
             payment_type: PaymentType::Regular,
             merchant_initiated: false,
@@ -462,12 +470,69 @@ mod tests {
             recipient: None,
             processing: None,
             metadata: None,
-        }));
+        }
+    }
+
+    #[test]
+    fn payout_request_processed() {
+        let mut rt = Runtime::new().unwrap();
+
+        let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 2000);
+        let payment: &'static _ = Box::leak(Box::new(payment));
 
         let response = rt
             .block_on(client().create_payment(payment).boxed().compat())
             .unwrap();
 
-        println!("{:?}", response);
+        let processed_payment = match response {
+            CreatePaymentResponse::Processed(processed) => processed,
+            CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
+        };
+
+        assert_eq!(processed_payment.amount, 2000);
+        assert_eq!(processed_payment.approved, true);
+        assert_eq!(processed_payment.status, PaymentStatus::Authorized);
+
+        match processed_payment.source {
+            Some(PaymentProcessedSource::Card {
+                expiry_month,
+                expiry_year,
+                last4,
+                ..
+            }) => {
+                assert_eq!(expiry_month, 6);
+                assert_eq!(expiry_year, 2025);
+                assert_eq!(last4, "4242".to_string());
+            }
+            other => panic!("payment source is not card: {:?}", other),
+        };
+    }
+
+    #[test]
+    #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
+    fn payout_request_declined() {
+        let mut rt = Runtime::new().unwrap();
+
+        let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 12305);
+        let payment: &'static _ = Box::leak(Box::new(payment));
+
+        let response = rt
+            .block_on(client().create_payment(payment).boxed().compat());
+
+        assert!(matches!(response, Ok(_)));
+    }
+
+    #[test]
+    #[ignore] // response code is 10000 (Approved) even with XXX12 as the amount
+    fn payout_request_invalid() {
+        let mut rt = Runtime::new().unwrap();
+
+        let payment = create_payment("4242424242424242".to_string(), 6, 2025, Some("100".to_string()), 12312);
+        let payment: &'static _ = Box::leak(Box::new(payment));
+
+        let response = rt
+            .block_on(client().create_payment(payment).boxed().compat());
+
+        assert!(matches!(response, Ok(_)));
     }
 }
