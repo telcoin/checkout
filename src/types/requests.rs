@@ -11,7 +11,7 @@ pub struct OAuthTokenRequest {
     /// See [Authentication](https://api-reference.checkout.com/preview/crusoe/#section/Authentication)
     /// for possible scopes
     pub scope: String,
-} 
+}
 
 /// Request body for a payment or payout
 ///
@@ -35,10 +35,10 @@ pub struct CreatePaymentRequest {
     /// amount or provide a value of 0 to perform a card verification.
     ///
     /// See: [Calculating the value](https://docs.checkout.com/resources/calculating-the-value)
-    pub amount: Option<u64>,
+    pub amount: Option<Amount>,
 
     /// The three-letter ISO country code
-    pub currency: String,
+    pub currency: Currency,
 
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order) (default:
