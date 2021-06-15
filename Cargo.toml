@@ -10,7 +10,7 @@ serde = "1.0.125"
 thiserror = "1.0.24"
 futures03 = { package = "futures", version = "0.3.13", features = ["compat"] }
 secrecy = "0.7.0"
-bigdecimal = "0.2.0"
+bigdecimal = "0.1.2"
 
 [dev-dependencies]
 dotenv = "0.15.0"
