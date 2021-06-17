@@ -472,7 +472,7 @@ pub struct PendingPayment {
 /// The status of the payment
 ///
 /// See: [Get Payment Details](https://docs.checkout.com/payments/manage-payments/get-payment-details)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PaymentStatus {
     Authorized,
     Pending,
@@ -489,6 +489,12 @@ pub enum PaymentStatus {
     Cancelled,
     Paid,
     Expired,
+}
+
+impl Default for PaymentStatus {
+    fn default() -> PaymentStatus {
+        PaymentStatus::Pending
+    }
 }
 
 /// Information relating to the processing of 3D Secure payments
