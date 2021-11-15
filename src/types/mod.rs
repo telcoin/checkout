@@ -622,7 +622,7 @@ pub enum PaymentProcessedSource {
         card_type: Option<CardType>,
 
         /// The card category
-        card_category: CardCategory,
+        card_category: Option<CardCategory>,
 
         /// The name of the card issuer
         issuer: Option<String>,
