@@ -8,10 +8,7 @@
 
 use std::{convert::TryFrom, fmt, str::FromStr};
 
-use futures03::compat::Future01CompatExt;
-use reqwest::{
-    r#async::Client as ReqwestClient, r#async::Response, Error as ReqwestError, StatusCode,
-};
+use reqwest::{Client as ReqwestClient, Error as ReqwestError, Response, StatusCode};
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -179,7 +176,7 @@ impl Client {
             scope: "gateway".to_string(),
         };
 
-        let mut response = self
+        let response = self
             .http_client
             .post(&url)
             .basic_auth(
@@ -188,13 +185,12 @@ impl Client {
             )
             .form(&body)
             .send()
-            .compat()
             .await?;
 
         let status = response.status();
         match status {
             StatusCode::OK => {
-                let body: OAuthTokenResponse = response.json().compat().await?;
+                let body: OAuthTokenResponse = response.json().await?;
                 Ok(body.access_token)
             }
             _ => Err(Error::Unauthorized),
@@ -207,18 +203,12 @@ impl Client {
     {
         let token = self.authorize().await?;
 
-        let mut response = self
-            .http_client
-            .get(url)
-            .bearer_auth(token)
-            .send()
-            .compat()
-            .await?;
+        let response = self.http_client.get(url).bearer_auth(token).send().await?;
 
         if response.status().is_success() {
-            Ok(response.json().compat().await?)
+            Ok(response.json().await?)
         } else {
-            Err(Error::Api(response.json().compat().await?))
+            Err(Error::Api(response.json().await?))
         }
     }
 
@@ -229,19 +219,18 @@ impl Client {
     {
         let token = self.authorize().await?;
 
-        let mut response = self
+        let response = self
             .http_client
             .post(url)
             .bearer_auth(token)
             .json(body)
             .send()
-            .compat()
             .await?;
 
         if response.status().is_success() {
-            Ok(response.json().compat().await?)
+            Ok(response.json().await?)
         } else {
-            Err(Error::Api(response.json().compat().await?))
+            Err(Error::Api(response.json().await?))
         }
     }
 
@@ -256,7 +245,6 @@ impl Client {
             .bearer_auth(token)
             .json(body)
             .send()
-            .compat()
             .await
             .map_err(Error::from)
     }
@@ -279,26 +267,26 @@ impl Client {
         request: &CreatePaymentRequest,
     ) -> Result<CreatePaymentResponse, Error> {
         let url = format!("{}/payments", self.environment.api_url());
-        let mut response = self.send_post_request_2(&url, request).await?;
+        let response = self.send_post_request_2(&url, request).await?;
 
         let status = response.status();
         match status {
             StatusCode::CREATED => {
-                let body = response.json().compat().await?;
+                let body = response.json().await?;
                 Ok(CreatePaymentResponse::Processed(body))
             }
             StatusCode::ACCEPTED => {
-                let body = response.json().compat().await?;
+                let body = response.json().await?;
                 Ok(CreatePaymentResponse::Pending(body))
             }
             StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
             StatusCode::UNPROCESSABLE_ENTITY => {
-                let body = response.json().compat().await?;
+                let body = response.json().await?;
                 Err(Error::InvalidData(body))
             }
             StatusCode::TOO_MANY_REQUESTS => Err(Error::TooManyRequests),
             code => {
-                let body = response.text().compat().await?;
+                let body = response.text().await?;
                 Err(Error::Unknown(code, body))
             }
         }
@@ -407,9 +395,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use futures03::future::{FutureExt, TryFutureExt};
     use once_cell::sync::OnceCell;
-    use tokio::runtime::Runtime;
 
     use super::*;
 
@@ -472,16 +458,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn payout_request_processed() {
-        let mut rt = Runtime::new().unwrap();
-
+    #[tokio::test]
+    async fn payout_request_processed() {
         let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 2000);
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = rt
-            .block_on(client().create_payment(payment).boxed().compat())
-            .unwrap();
+        let response = client().create_payment(payment).await.unwrap();
 
         let processed_payment = match response {
             CreatePaymentResponse::Processed(processed) => processed,
@@ -507,24 +489,20 @@ mod tests {
         };
     }
 
-    #[test]
     #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
-    fn payout_request_declined() {
-        let mut rt = Runtime::new().unwrap();
-
+    #[tokio::test]
+    async fn payout_request_declined() {
         let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 12305);
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = rt.block_on(client().create_payment(payment).boxed().compat());
+        let response = client().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
 
-    #[test]
     #[ignore] // response code is 10000 (Approved) even with XXX12 as the amount
-    fn payout_request_invalid() {
-        let mut rt = Runtime::new().unwrap();
-
+    #[tokio::test]
+    async fn payout_request_invalid() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -534,7 +512,7 @@ mod tests {
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = rt.block_on(client().create_payment(payment).boxed().compat());
+        let response = client().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
