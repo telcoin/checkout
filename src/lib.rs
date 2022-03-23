@@ -395,6 +395,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use bigdecimal::BigDecimal;
     use once_cell::sync::OnceCell;
 
     use super::*;
@@ -416,7 +417,7 @@ mod tests {
         month: u32,
         year: u32,
         cvv: Option<String>,
-        amount: u64,
+        amount: BigDecimal,
     ) -> CreatePaymentRequest {
         // The Checkout sandbox uses certain card numbers, expiration dates,
         // cvvs, and amounts to trigger failure cases.
@@ -435,8 +436,8 @@ mod tests {
                 phone: None,
             }),
             destination: None,
-            amount: Some(amount),
-            currency: "USD".to_string(),
+            amount: Some(Amount::from(Currency::USD, amount)),
+            currency: Currency::USD,
             payment_type: PaymentType::Regular,
             merchant_initiated: false,
             reference: None,
@@ -460,7 +461,13 @@ mod tests {
 
     #[tokio::test]
     async fn payout_request_processed() {
-        let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 2000);
+        let payment = create_payment(
+            "4242424242424242".to_string(),
+            6,
+            2025,
+            None,
+            BigDecimal::try_from(20.00).unwrap(),
+        );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
         let response = client().create_payment(payment).await.unwrap();
@@ -470,7 +477,6 @@ mod tests {
             CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
         };
 
-        assert_eq!(processed_payment.amount, 2000);
         assert_eq!(processed_payment.approved, true);
         assert_eq!(processed_payment.status, PaymentStatus::Authorized);
 
@@ -489,10 +495,16 @@ mod tests {
         };
     }
 
-    #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
     #[tokio::test]
+    #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
     async fn payout_request_declined() {
-        let payment = create_payment("4242424242424242".to_string(), 6, 2025, None, 12305);
+        let payment = create_payment(
+            "4242424242424242".to_string(),
+            6,
+            2025,
+            None,
+            BigDecimal::try_from(123.05).unwrap(),
+        );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
         let response = client().create_payment(payment).await;
@@ -508,7 +520,7 @@ mod tests {
             6,
             2025,
             Some("100".to_string()),
-            12312,
+            BigDecimal::try_from(123.12).unwrap(),
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 

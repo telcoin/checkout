@@ -3,10 +3,12 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub mod currency;
 pub mod links;
 pub mod requests;
 pub mod responses;
 
+pub use currency::*;
 use links::Links;
 pub use requests::*;
 pub use responses::*;
@@ -27,10 +29,10 @@ pub struct PaymentDetails {
     pub destination: Option<PaymentProcessedDestination>,
 
     /// The payment amount
-    pub amount: u64,
+    pub amount: Amount,
 
     /// The three-letter ISO currency code of the payment (3 characters)
-    pub currency: String,
+    pub currency: Currency,
 
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order)
@@ -72,7 +74,7 @@ pub struct PaymentDetails {
     /// Information about the recipient of the payment's funds. Relevant for
     /// both Account Funding Transactions and VISA or MasterCard domestic UK
     /// transactions processed by Financial Institutions.
-    /// 
+    ///
     /// See: [Account Funding Transactions](https://docs.checkout.com/payments/manage-payments/account-funding-transactions)
     /// and [Requirements for financial institutions](https://docs.checkout.com/risk-management/requirements-for-financial-institutions)
     pub recipient: Option<PaymentRecipient>,
@@ -291,8 +293,8 @@ pub struct _3DSRequest {
     pub exemption: Option<ScaExemption>,
 }
 
-/// A type of exemption from 3DS authentication 
-/// 
+/// A type of exemption from 3DS authentication
+///
 /// See: [Possible SCA exemptions](https://docs.checkout.com/risk-management/sca-compliance-guide)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ScaExemption {
@@ -379,10 +381,10 @@ pub struct PaymentProcessed {
     pub action_id: String,
 
     /// The payment amount
-    pub amount: u64,
+    pub amount: Amount,
 
     /// The three-letter ISO currency code of the payment (3 characters)
-    pub currency: String,
+    pub currency: Currency,
 
     /// Whether or not the authorization or capture was successful
     pub approved: bool,
@@ -470,7 +472,7 @@ pub struct PendingPayment {
 /// The status of the payment
 ///
 /// See: [Get Payment Details](https://docs.checkout.com/payments/manage-payments/get-payment-details)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PaymentStatus {
     Authorized,
     Pending,
@@ -487,6 +489,12 @@ pub enum PaymentStatus {
     Cancelled,
     Paid,
     Expired,
+}
+
+impl Default for PaymentStatus {
+    fn default() -> PaymentStatus {
+        PaymentStatus::Pending
+    }
 }
 
 /// Information relating to the processing of 3D Secure payments
@@ -614,7 +622,7 @@ pub enum PaymentProcessedSource {
         card_type: Option<CardType>,
 
         /// The card category
-        card_category: CardCategory,
+        card_category: Option<CardCategory>,
 
         /// The name of the card issuer
         issuer: Option<String>,
