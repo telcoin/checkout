@@ -143,6 +143,13 @@ pub enum PaymentRequestSource {
         /// The phone number of the cardholder
         phone: Option<PhoneNumber>,
     },
+
+    /// A token representing a debit/credit/etc card
+    #[serde(rename = "token")]
+    Token {
+        /// The token retrieved by posting card details to `/tokens` beforehand
+        token: String,
+    },
 }
 
 /// The payout destination type
