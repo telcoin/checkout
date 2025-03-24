@@ -163,10 +163,10 @@ pub enum PaymentRequestDestination {
         number: String,
 
         /// The expiry month of the card (1-2 characters)
-        expiry_month: String,
+        expiry_month: u32,
 
         /// The expiry year of the card (4 characters)
-        expiry_year: String,
+        expiry_year: u32,
 
         /// The payout destination owner's first name
         first_name: String,
@@ -182,6 +182,19 @@ pub enum PaymentRequestDestination {
 
         /// The phone number of the cardholder
         phone: Option<PhoneNumber>,
+    },
+
+    /// A token representing a debit/credit/etc card
+    #[serde(rename = "token")]
+    Token {
+        /// The token retrieved by posting card details to `/tokens` beforehand
+        token: String,
+
+        /// The payout destination owner's first name
+        first_name: String,
+
+        /// The payout destination owner's last name
+        last_name: String,
     },
 }
 
