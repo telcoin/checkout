@@ -115,7 +115,9 @@ pub struct CreatePaymentRequest {
     /// card processing
     pub processing: Option<PaymentProcessingDescriptor>,
 
-    /// The processing channel to be used for the payment    
+    /// The processing channel to be used for the payment
+    ///
+    /// This can be found under a Payment Method in the Checkout dashboard.
     pub processing_channel_id: String,
 
     /// Allows you to store additional information about a transaction with

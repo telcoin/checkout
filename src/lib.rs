@@ -424,6 +424,8 @@ mod tests {
         //
         // https://docs.checkout.com/testing
 
+        let processing_channel_id = dotenvy::var("CKO_PROCESSING_CHANNEL_ID").unwrap();
+
         CreatePaymentRequest {
             source: Some(PaymentRequestSource::Card {
                 number,
@@ -455,7 +457,7 @@ mod tests {
             payment_ip: None,
             recipient: None,
             processing: None,
-            processing_channel_id: "pc_vxt6yftthv4e5flqak6w2i7rim".to_owned(),
+            processing_channel_id,
             metadata: None,
         }
     }
