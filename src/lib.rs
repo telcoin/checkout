@@ -455,6 +455,7 @@ mod tests {
             payment_ip: None,
             recipient: None,
             processing: None,
+            processing_channel_id: "pc_vxt6yftthv4e5flqak6w2i7rim".to_owned(),
             metadata: None,
         }
     }
