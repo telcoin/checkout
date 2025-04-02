@@ -5,14 +5,14 @@ authors = ["Trevor Wilson <trevor@telco.in>"]
 edition = "2018"
 
 [dependencies]
-reqwest = { version = "0.11.10", features = ["json"] }
+reqwest = { version = "0.12.14", features = ["json"] }
 serde = { version = "1.0.136", features = ["derive"] }
 thiserror = "1.0.24"
 secrecy = "0.8.0"
-bigdecimal = { version = "0.1.2", features = ["serde"] } # must satisfy diesel requirements
+bigdecimal = { version = "0.4.7", features = ["serde"] } # must satisfy diesel requirements
 
 [dev-dependencies]
-dotenv = "0.15.0"
-rand = "0.8.3"
-tokio = { version = "1.17.0", features = ["macros", "rt"] }
+dotenvy = "0.15.0"
+rand = "0.9.0"
+tokio = { version = "1.44.0", features = ["macros", "rt"] }
 once_cell = "1.7.2"

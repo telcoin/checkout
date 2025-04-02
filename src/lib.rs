@@ -403,7 +403,7 @@ mod tests {
     fn client() -> &'static Client {
         static INSTANCE: OnceCell<Client> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            let dotenv_var = |key: &str| SecretString::new(dotenv::var(key).expect(key));
+            let dotenv_var = |key: &str| SecretString::new(dotenvy::var(key).expect(key));
             Client::new(
                 dotenv_var("CKO_USERNAME"),
                 dotenv_var("CKO_PASSWORD"),
