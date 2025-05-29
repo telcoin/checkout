@@ -150,6 +150,13 @@ pub enum PaymentRequestSource {
         /// The token retrieved by posting card details to `/tokens` beforehand
         token: String,
     },
+
+    /// A Checkout currency account
+    #[serde(rename = "currency_account")]
+    CurrencyAccount {
+        /// The ID of the currency account that will fund the payout
+        id: String,
+    },
 }
 
 /// The payout destination type
