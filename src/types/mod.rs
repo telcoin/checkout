@@ -188,12 +188,6 @@ pub enum PaymentRequestDestination {
         /// The token retrieved by posting card details to `/tokens` beforehand
         token: String,
 
-        /// The payout destination owner's first name
-        first_name: String,
-
-        /// The payout destination owner's last name
-        last_name: String,
-
         /// The payout destination account holder
         account_holder: DestinationAccountHolder,
     },
