@@ -36,7 +36,7 @@ pub struct PaymentDetails {
 
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order)
-    pub payment_type: Option<PaymentType>,
+    pub payment_type: PaymentType,
 
     /// Your reference for the payment
     pub reference: Option<String>,
@@ -94,9 +94,6 @@ pub struct PaymentDetails {
     /// A summary of the payment's actions, returned when a session ID is used
     /// to get the payment details
     pub actions: Option<Vec<ActionSummary>>,
-
-    /// Additional details about the payout instruction.
-    pub instruction: Option<DestinationInstruction>,
 
     /// The links related to the payment
     ///

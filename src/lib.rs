@@ -458,12 +458,69 @@ mod tests {
             recipient: None,
             processing: None,
             processing_channel_id,
+            instruction: None,
+            metadata: None,
+        }
+    }
+
+    fn create_payout(
+        number: String,
+        month: u32,
+        year: u32,
+        amount: BigDecimal,
+    ) -> CreatePaymentRequest {
+        // The Checkout sandbox uses certain card numbers, expiration dates,
+        // cvvs, and amounts to trigger failure cases.
+        //
+        // https://docs.checkout.com/testing
+
+        let processing_channel_id = dotenvy::var("CKO_PROCESSING_CHANNEL_ID").unwrap();
+        let currency_account_id = dotenvy::var("CKO_CURRENCY_ACCOUNT_ID").unwrap();
+
+        CreatePaymentRequest {
+            source: Some(PaymentRequestSource::CurrencyAccount {
+                id: currency_account_id,
+            }),
+            destination: Some(PaymentRequestDestination::Card {
+                number,
+                expiry_month: month,
+                expiry_year: year,
+                account_holder: DestinationAccountHolder::Individual {
+                    first_name: Some("Test".to_owned()),
+                    last_name: Some("User".to_owned()),
+                    middle_name: None,
+                },
+            }),
+            amount: Some(Amount::from(Currency::USD, amount)),
+            currency: Currency::USD,
+            payment_type: PaymentType::Regular,
+            merchant_initiated: false,
+            reference: None,
+            description: None,
+            capture: None,
+            capture_on: None,
+            customer: None,
+            billing_descriptor: None,
+            shipping: None,
+            three_ds: None,
+            previous_payment_id: None,
+            risk: None,
+            success_url: None,
+            failure_url: None,
+            payment_ip: None,
+            recipient: None,
+            processing: None,
+            processing_channel_id,
+            instruction: Some(DestinationInstruction {
+                funds_transfer_type: Some("transfer".to_owned()),
+                purpose: None,
+            }),
             metadata: None,
         }
     }
 
     #[tokio::test]
-    async fn payout_request_processed() {
+    async fn payment_request_processed() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -500,7 +557,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
-    async fn payout_request_declined() {
+    async fn payment_request_declined() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -517,7 +574,7 @@ mod tests {
 
     #[ignore] // response code is 10000 (Approved) even with XXX12 as the amount
     #[tokio::test]
-    async fn payout_request_invalid() {
+    async fn payment_request_invalid() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -530,5 +587,40 @@ mod tests {
         let response = client().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
+    }
+
+    #[tokio::test]
+    async fn payout_request_processed() {
+        let payment = create_payout(
+            "4242424242424242".to_string(),
+            6,
+            2025,
+            BigDecimal::try_from(20.00).unwrap(),
+        );
+        let payment: &'static _ = Box::leak(Box::new(payment));
+
+        let response = client().create_payment(payment).await.unwrap();
+
+        let processed_payment = match response {
+            CreatePaymentResponse::Processed(processed) => processed,
+            CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
+        };
+
+        assert_eq!(processed_payment.approved, true);
+        assert_eq!(processed_payment.status, PaymentStatus::Authorized);
+
+        match processed_payment.source {
+            Some(PaymentProcessedSource::Card {
+                expiry_month,
+                expiry_year,
+                last4,
+                ..
+            }) => {
+                assert_eq!(expiry_month, 6);
+                assert_eq!(expiry_year, 2025);
+                assert_eq!(last4, "4242".to_string());
+            }
+            other => panic!("payment source is not card: {:?}", other),
+        };
     }
 }

@@ -120,6 +120,9 @@ pub struct CreatePaymentRequest {
     /// This can be found under a Payment Method in the Checkout dashboard.
     pub processing_channel_id: String,
 
+    /// Additional details about the payout instruction.
+    pub instruction: Option<DestinationInstruction>,
+
     /// Allows you to store additional information about a transaction with
     /// custom fields and up to five user-defined fields (`udf1` to `udf5`),
     /// which can be used for reporting purposes. `udf1` is also used for some
