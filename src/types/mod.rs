@@ -951,3 +951,56 @@ pub enum ActionType {
     Refund,
     Payout,
 }
+
+/// The source to get card metadata
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CardMetadataSource {
+    #[serde(rename = "card")]
+    Card {
+        /// The Primary Account Number
+        number: String,
+    },
+
+    #[serde(rename = "bin")]
+    Bin {
+        /// The issuer's Bank Identification Number
+        bin: String,
+    },
+
+    #[serde(rename = "token")]
+    Token {
+        /// The Checkout.com unique token that was generated when the card's
+        /// details were tokenized
+        token: String,
+    },
+
+    #[serde(rename = "id")]
+    Id {
+        /// The unique ID for the payment instrument that was created using the
+        /// card's details
+        id: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CardMetadataFormat {
+    /// A basic response will only include standard metadata
+    #[serde(rename = "basic")]
+    Basic,
+
+    /// A card_payouts formatted response will also include fields specific to
+    /// card payouts.
+    #[serde(rename = "card_payouts")]
+    CardPayouts,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CardMetadataRequest {
+    /// The source object
+    pub source: CardMetadataSource,
+
+    /// The format to provide the output in.
+    ///
+    /// Default is "basic"
+    pub format: Option<CardMetadataFormat>,
+}

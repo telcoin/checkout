@@ -391,6 +391,20 @@ impl Client {
         );
         self.send_post_request(&url, &body).await
     }
+
+    /// Returns a single metadata record for the card specified by the Primary
+    /// Account Number (PAN), Bank Identification Number (BIN), token, or
+    /// instrument supplied.
+    pub async fn get_card_metadata(
+        &self,
+        source: CardMetadataSource,
+        format: Option<CardMetadataFormat>,
+    ) -> Result<CardMetadataResponse, Error> {
+        let body = CardMetadataRequest { source, format };
+        let url = format!("{}/metadata/card", self.environment.api_url());
+
+        self.send_post_request(&url, &body).await
+    }
 }
 
 #[cfg(test)]
@@ -622,5 +636,20 @@ mod tests {
             }
             other => panic!("payment source is not card: {:?}", other),
         };
+    }
+
+    #[tokio::test]
+    async fn request_card_metadata() {
+        let response = client()
+            .get_card_metadata(
+                CardMetadataSource::Card {
+                    number: "4276038578596818".to_owned(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        dbg!(response);
     }
 }
