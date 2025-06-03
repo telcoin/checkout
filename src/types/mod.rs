@@ -204,6 +204,108 @@ pub enum PaymentType {
     Moto,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum PaymentSenderDetails {
+    #[serde(rename = "individual")]
+    Individual {
+        /// The account holder's first name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// first_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        first_name: String,
+
+        /// The account holder's middle name.
+        middle_name: Option<String>,
+
+        /// The account holder's last name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// last_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        last_name: String,
+
+        /// The sender's date of birth, in the format YYYY-MM-DD.
+        ///
+        /// This field is required for cross-border money transfers.
+        date_of_birth: Option<String>,
+
+        /// The sender's country of birth, as a two-letter ISO country code.
+        country_of_birth: Option<String>,
+
+        /// The sender's nationality, as a two-letter ISO country code.
+        nationality: Option<String>,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+
+    #[serde(rename = "corporate")]
+    Corporate {
+        /// The corporate sender's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+
+    #[serde(rename = "government")]
+    Government {
+        /// The sender's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+}
+
 /// The payout destination account holder
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]

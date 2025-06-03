@@ -473,6 +473,7 @@ mod tests {
             processing: None,
             processing_channel_id,
             instruction: None,
+            sender: None,
             metadata: None,
         }
     }
@@ -526,8 +527,27 @@ mod tests {
             processing: None,
             processing_channel_id,
             instruction: Some(DestinationInstruction {
-                funds_transfer_type: Some("transfer".to_owned()),
+                funds_transfer_type: Some("FT".to_owned()),
                 purpose: None,
+            }),
+            sender: Some(PaymentSenderDetails::Individual {
+                first_name: "Test".to_owned(),
+                middle_name: None,
+                last_name: "User".to_owned(),
+                date_of_birth: None,
+                country_of_birth: None,
+                nationality: None,
+                address: Address {
+                    address_line1: Some("123 Main St".to_owned()),
+                    address_line2: None,
+                    city: Some("Los Angeles".to_owned()),
+                    state: Some("CA".to_owned()),
+                    zip: Some("90051".to_owned()),
+                    country: Some("US".to_owned()),
+                },
+                reference: "12345678".to_owned(),
+                reference_type: "other".to_owned(),
+                source_of_funds: "mobile_money_account".to_owned(),
             }),
             metadata: None,
         }

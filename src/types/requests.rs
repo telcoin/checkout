@@ -123,6 +123,11 @@ pub struct CreatePaymentRequest {
     /// Additional details about the payout instruction.
     pub instruction: Option<DestinationInstruction>,
 
+    /// The sender of the payout.
+    ///
+    /// This field is required for money transfer card payouts.
+    pub sender: Option<PaymentSenderDetails>,
+
     /// Allows you to store additional information about a transaction with
     /// custom fields and up to five user-defined fields (`udf1` to `udf5`),
     /// which can be used for reporting purposes. `udf1` is also used for some
