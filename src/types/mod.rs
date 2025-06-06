@@ -1056,6 +1056,7 @@ pub enum ActionType {
 
 /// The source to get card metadata
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
 pub enum CardMetadataSource {
     #[serde(rename = "card")]
     Card {
@@ -1104,5 +1105,6 @@ pub struct CardMetadataRequest {
     /// The format to provide the output in.
     ///
     /// Default is "basic"
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<CardMetadataFormat>,
 }

@@ -169,11 +169,11 @@ impl Client {
         ))
     }
 
-    async fn authorize(&self) -> Result<String, Error> {
+    async fn authorize(&self, scope: &str) -> Result<String, Error> {
         let url = format!("{}/connect/token", self.environment.access_url());
         let body = OAuthTokenRequest {
             grant_type: "client_credentials".to_string(),
-            scope: "gateway".to_string(),
+            scope: scope.to_owned(),
         };
 
         let response = self
@@ -197,11 +197,11 @@ impl Client {
         }
     }
 
-    async fn send_get_request<R>(&self, url: &str) -> Result<R, Error>
+    async fn send_get_request<R>(&self, scope: &str, url: &str) -> Result<R, Error>
     where
         R: DeserializeOwned,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         let response = self.http_client.get(url).bearer_auth(token).send().await?;
 
@@ -212,12 +212,12 @@ impl Client {
         }
     }
 
-    async fn send_post_request<B, R>(&self, url: &str, body: &B) -> Result<R, Error>
+    async fn send_post_request<B, R>(&self, scope: &str, url: &str, body: &B) -> Result<R, Error>
     where
         B: Serialize,
         R: DeserializeOwned,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         let response = self
             .http_client
@@ -234,11 +234,16 @@ impl Client {
         }
     }
 
-    async fn send_post_request_2<B>(&self, url: &str, body: &B) -> Result<Response, Error>
+    async fn send_post_request_2<B>(
+        &self,
+        scope: &str,
+        url: &str,
+        body: &B,
+    ) -> Result<Response, Error>
     where
         B: Serialize,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         self.http_client
             .post(url)
@@ -267,7 +272,7 @@ impl Client {
         request: &CreatePaymentRequest,
     ) -> Result<CreatePaymentResponse, Error> {
         let url = format!("{}/payments", self.environment.api_url());
-        let response = self.send_post_request_2(&url, request).await?;
+        let response = self.send_post_request_2("gateway", &url, request).await?;
 
         let status = response.status();
         match status {
@@ -308,7 +313,7 @@ impl Client {
         payment_id: String,
     ) -> Result<GetPaymentDetailsResponse, Error> {
         let url = format!("{}/payments/{}", self.environment.api_url(), payment_id);
-        self.send_get_request(&url).await
+        self.send_get_request("gateway", &url).await
     }
 
     /// Get payment actions
@@ -326,7 +331,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_get_request(&url).await
+        self.send_get_request("gateway", &url).await
     }
 
     /// Capture a payment
@@ -347,7 +352,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
     }
 
     /// Refund a payment
@@ -368,7 +373,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
     }
 
     /// Void a payment
@@ -389,7 +394,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
     }
 
     /// Returns a single metadata record for the card specified by the Primary
@@ -403,7 +408,8 @@ impl Client {
         let body = CardMetadataRequest { source, format };
         let url = format!("{}/metadata/card", self.environment.api_url());
 
-        self.send_post_request(&url, &body).await
+        self.send_post_request("vault:card-metadata", &url, &body)
+            .await
     }
 }
 
@@ -663,13 +669,14 @@ mod tests {
         let response = client()
             .get_card_metadata(
                 CardMetadataSource::Card {
-                    number: "4276038578596818".to_owned(),
+                    number: "4242424242424242".to_owned(),
                 },
                 None,
             )
             .await
             .unwrap();
 
-        dbg!(response);
+        assert_eq!(response.scheme, "visa");
+        assert_eq!(response.issuer_country.as_deref(), Some("GB"));
     }
 }
