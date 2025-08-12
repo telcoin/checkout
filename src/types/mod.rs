@@ -60,10 +60,6 @@ pub struct PaymentDetails {
     /// The customer associated with the payment, if provided in the request
     pub customer: Option<CustomerInfo>,
 
-    /// An optional dynamic billing descriptor displayed on the account owner's
-    /// statement
-    pub billing_descriptor: Option<BillingDescriptor>,
-
     /// The shipping details
     pub shipping: Option<ShippingDescriptor>,
 
