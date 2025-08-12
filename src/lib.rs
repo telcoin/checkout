@@ -577,7 +577,7 @@ mod tests {
             CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
         };
 
-        assert_eq!(processed_payment.approved, true);
+        assert_eq!(processed_payment.approved, Some(true));
         assert_eq!(processed_payment.status, PaymentStatus::Authorized);
 
         match processed_payment.source {
@@ -646,7 +646,7 @@ mod tests {
             CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
         };
 
-        assert_eq!(processed_payment.approved, true);
+        assert_eq!(processed_payment.approved, Some(true));
         assert_eq!(processed_payment.status, PaymentStatus::Authorized);
 
         match processed_payment.source {

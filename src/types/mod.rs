@@ -45,7 +45,7 @@ pub struct PaymentDetails {
     pub description: Option<String>,
 
     /// Whether or not the authorization or capture was successful
-    pub approved: bool,
+    pub approved: Option<bool>,
 
     /// The status of the payment
     pub status: PaymentStatus,
@@ -584,7 +584,7 @@ pub struct PaymentProcessed {
     pub currency: Currency,
 
     /// Whether or not the authorization or capture was successful
-    pub approved: bool,
+    pub approved: Option<bool>,
 
     /// The status of the payment
     pub status: PaymentStatus,
