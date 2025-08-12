@@ -36,7 +36,7 @@ pub struct PaymentDetails {
 
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order)
-    pub payment_type: PaymentType,
+    pub payment_type: Option<PaymentType>,
 
     /// Your reference for the payment
     pub reference: Option<String>,
@@ -851,6 +851,14 @@ pub enum PaymentProcessedSource {
         /// A unique reference to the underlying card for network tokens (e.g.
         /// Apple Pay, Google Pay)
         payment_account_reference: Option<String>,
+    },
+
+    /// The only source for payouts
+    #[serde(rename = "currency_account")]
+    CurrencyAccount {
+        /// The payment source identifier, which can be used for subsequent
+        /// payments
+        id: String,
     },
 }
 
