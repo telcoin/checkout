@@ -13,8 +13,12 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+pub mod flows;
+pub mod payments;
 pub(crate) mod types;
 
+pub use flows::*;
+pub use payments::*;
 pub use types::*;
 
 /// An error that was reported by the Checkout API
@@ -266,159 +270,14 @@ impl Client {
             .map_err(Error::from)
     }
 
-    /// Request a payment or payout
-    ///
-    /// To accept payments from cards, digital wallets and many alternative
-    /// payment methods, specify the source.type field, along with the
-    /// source-specific data.
-    ///
-    /// To pay out to a card, specify the destination of your payout using the
-    /// destination.type field, along with the destination-specific data.
-    ///
-    /// To verify the success of the payment, check the approved field in the
-    /// response.
-    ///
-    /// [`POST /payments`](https://api-reference.checkout.com/#operation/requestAPaymentOrPayout)
-    pub async fn create_payment(
-        &self,
-        request: &CreatePaymentRequest,
-    ) -> Result<CreatePaymentResponse, Error> {
-        let url = format!("{}/payments", self.environment.api_url());
-        let response = self.send_post_request_2("gateway", &url, request).await?;
-
-        let status = response.status();
-        match status {
-            StatusCode::CREATED => {
-                let body = response.json().await?;
-                Ok(CreatePaymentResponse::Processed(body))
-            }
-            StatusCode::ACCEPTED => {
-                let body = response.json().await?;
-                Ok(CreatePaymentResponse::Pending(body))
-            }
-            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
-            StatusCode::UNPROCESSABLE_ENTITY => {
-                let body = response.json().await?;
-                Err(Error::InvalidData(body))
-            }
-            StatusCode::TOO_MANY_REQUESTS => Err(Error::TooManyRequests),
-            code => {
-                let body = response.text().await?;
-                Err(Error::Unknown(code, body))
-            }
-        }
+    /// Access the Payments API.
+    pub fn payments(&self) -> Payments<'_> {
+        Payments::new(self)
     }
 
-    /// Get payment details
-    ///
-    /// Returns the details of the payment with the specified identifier
-    /// string.
-    ///
-    /// If the payment method requires a redirection to a third party (e.g., 3D
-    /// Secure), the redirect URL back to your site will include a
-    /// `cko-session-id` query parameter containing a payment session ID that
-    /// can be used to obtain the details of the payment
-    ///
-    /// [`GET /payments/{id}`](https://api-reference.checkout.com/#operation/getPaymentDetails)
-    pub async fn get_payment_details(
-        &self,
-        payment_id: String,
-    ) -> Result<GetPaymentDetailsResponse, Error> {
-        let url = format!("{}/payments/{}", self.environment.api_url(), payment_id);
-        self.send_get_request("gateway", &url).await
-    }
-
-    /// Get payment actions
-    ///
-    /// Returns all the actions associated with a payment ordered by processing
-    /// date in descending order (latest first).
-    ///
-    /// [`GET /payments/{id}/actions`](https://api-reference.checkout.com/#operation/getPaymentActions)
-    pub async fn get_payment_actions(
-        &self,
-        payment_id: String,
-    ) -> Result<GetPaymentActionsResponse, Error> {
-        let url = format!(
-            "{}/payments/{}/actions",
-            self.environment.api_url(),
-            payment_id
-        );
-        self.send_get_request("gateway", &url).await
-    }
-
-    /// Capture a payment
-    ///
-    /// Captures a payment if supported by the payment method.
-    ///
-    /// For card payments, capture requests are processed asynchronously. You
-    /// can use webhooks to be notified if the capture is successful.
-    ///
-    /// [`POST /payments/{id}/captures`](https://api-reference.checkout.com/#operation/captureAPayment)
-    pub async fn capture_payment(
-        &self,
-        payment_id: String,
-        body: &CapturePaymentBody,
-    ) -> Result<CapturePaymentResponse, Error> {
-        let url = format!(
-            "{}/payments/{}/captures",
-            self.environment.api_url(),
-            payment_id
-        );
-        self.send_post_request("gateway", &url, &body).await
-    }
-
-    /// Creates a payment session for the Flow integration.
-    ///
-    /// [`POST /payment-sessions`](https://api-reference.checkout.com/#operation/CreatePaymentSession)
-    pub async fn create_payment_session(
-        &self,
-        request: &CreatePaymentSessionRequest,
-    ) -> Result<CreatePaymentSessionResponse, Error> {
-        let url = format!("{}/payment-sessions", self.environment.api_url());
-        self.send_post_request("payment-sessions", &url, request)
-            .await
-    }
-
-    /// Refund a payment
-    ///
-    /// Refunds a payment if supported by the payment method.
-    ///
-    /// For card payments, refund requests are processed asynchronously. You
-    /// can use webhooks to be notified if the refund is successful.
-    ///
-    /// [`POST /payments/{id}/refunds`](https://api-reference.checkout.com/#operation/refundAPayment)
-    pub async fn refund_payment(
-        &self,
-        payment_id: String,
-        body: &RefundPaymentBody,
-    ) -> Result<RefundPaymentResponse, Error> {
-        let url = format!(
-            "{}/payments/{}/refunds",
-            self.environment.api_url(),
-            payment_id
-        );
-        self.send_post_request("gateway", &url, &body).await
-    }
-
-    /// Void a payment
-    ///
-    /// Voids a payment if supported by the payment method.
-    ///
-    /// For card payments, void requests are processed asynchronously. You can
-    /// use webhooks to be notified if the void is successful.
-    ///
-    /// [`POST /payments/{id}/voids`](https://api-reference.checkout.com/#operation/voidAPayment)
-    pub async fn void_payment(
-        &self,
-        payment_id: String,
-        body: &VoidPaymentBody,
-    ) -> Result<VoidPaymentResponse, Error> {
-        let url = format!(
-            "{}/payments/{}/voids",
-            self.environment.api_url(),
-            payment_id
-        );
-        self.send_post_request("gateway", &url, &body).await
+    /// Access the Flows API.
+    pub fn flows(&self) -> Flows<'_> {
+        Flows::new(self)
     }
 
     /// Returns a single metadata record for the card specified by the Primary
@@ -473,7 +332,7 @@ mod tests {
                 name: None,
                 cvv,
                 stored: None,
-                billing_address: Box::new(None),
+                billing_address: None,
                 phone: None,
             })
             .amount(Amount::from(Currency::USD, amount))
@@ -552,7 +411,7 @@ mod tests {
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client.create_payment(payment).await.unwrap();
+        let response = client.payments().create_payment(payment).await.unwrap();
 
         let processed_payment = match response {
             CreatePaymentResponse::Processed(processed) => processed,
@@ -594,7 +453,7 @@ mod tests {
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client.create_payment(payment).await;
+        let response = client.payments().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
@@ -616,7 +475,7 @@ mod tests {
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client.create_payment(payment).await;
+        let response = client.payments().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
@@ -640,7 +499,7 @@ mod tests {
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client.create_payment(payment).await.unwrap();
+        let response = client.payments().create_payment(payment).await.unwrap();
 
         let processed_payment = match response {
             CreatePaymentResponse::Processed(processed) => processed,
@@ -695,7 +554,7 @@ mod tests {
             failure_url: "https://example.com/failure".to_string(),
         };
 
-        let response = client.create_payment_session(&request).await.unwrap();
+        let response = client.flows().create_payment_session(&request).await.unwrap();
 
         assert!(response.id.starts_with("ps_"));
         assert!(response.payment_session_secret.starts_with("pss_"));
@@ -714,7 +573,7 @@ mod tests {
             failure_url: "https://example.com/failure".to_string(),
         };
 
-        let response = client.create_payment_session(&request).await;
+        let response = client.flows().create_payment_session(&request).await;
 
         assert!(matches!(response, Err(Error::InvalidData(_))));
     }
