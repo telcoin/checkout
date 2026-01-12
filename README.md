@@ -1,13 +1,11 @@
 # Checkout.com Rust SDK
 
-An unofficial Rust client for the [Checkout.com API](https://www.checkout.com/docs/api).
+An unofficial Rust client for the [Checkout.com API](https://www.checkout.com/docs/api) powered by `reqwest`.
 
-## Features
+## Supported APIs
 
--   Supports the new "Flow" integration for seamless payments.
--   Fluent API design for easy and intuitive usage.
--   Comprehensive error handling.
--   Asynchronous API powered by `reqwest`.
+-   Payment Session (Flow)
+-   Payment
 
 ## Usage
 
@@ -45,8 +43,6 @@ let client = Client::from_env().unwrap();
 
 ### Creating a Payment Session (Flow)
 
-To initiate a payment using the "Flow" integration, you need to create a payment session:
-
 ```rust
 use checkout::{CreatePaymentSessionRequest, Currency};
 
@@ -64,8 +60,6 @@ let response = client.create_payment_session(&request).await.unwrap();
 ```
 
 ### Creating a Payment
-
-You can create a payment using the builder pattern provided by the `bon` crate:
 
 ```rust
 use checkout::{CreatePaymentRequest, Currency, PaymentRequestSource, Amount};
