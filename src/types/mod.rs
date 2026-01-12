@@ -16,7 +16,7 @@ pub use responses::*;
 /// The details of a payment
 #[derive(Deserialize, Debug, Clone)]
 pub struct PaymentDetails {
-    /// The payment's unique identifier (<= 30 characters, format `pay_*`)
+    /// The payment's unique identifier (<= 30 characters, format: `pay_*`)
     pub id: String,
 
     /// The date/time the payment was requested
@@ -187,9 +187,10 @@ pub enum PaymentRequestDestination {
 }
 
 /// A type of payment
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub enum PaymentType {
     /// A regular payment
+    #[default]
     Regular,
 
     /// A merchant-initiated recurring payment
@@ -208,7 +209,7 @@ pub enum PaymentSenderDetails {
         /// The account holder's first name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// first_name value will return a field validation error:
+        /// `first_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -220,7 +221,7 @@ pub enum PaymentSenderDetails {
         /// The account holder's last name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// last_name value will return a field validation error:
+        /// `last_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -246,8 +247,8 @@ pub enum PaymentSenderDetails {
         /// The type of identifier used as the reference.
         reference_type: String,
 
-        /// The source of the funds used to fund the card payout: "credit"
-        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        /// The source of the funds used to fund the card payout: `"credit"`,
+        /// `"debit"`, `"prepaid"`, `"deposit_account"`, `"mobile_money_account"`, `"cash"`
         source_of_funds: String,
     },
 
@@ -256,7 +257,7 @@ pub enum PaymentSenderDetails {
         /// The corporate sender's company name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// company_name value will return a field validation error:
+        /// `company_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -271,8 +272,8 @@ pub enum PaymentSenderDetails {
         /// The type of identifier used as the reference.
         reference_type: String,
 
-        /// The source of the funds used to fund the card payout: "credit"
-        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        /// The source of the funds used to fund the card payout: `"credit"`,
+        /// `"debit"`, `"prepaid"`, `"deposit_account"`, `"mobile_money_account"`, `"cash"`
         source_of_funds: String,
     },
 
@@ -281,7 +282,7 @@ pub enum PaymentSenderDetails {
         /// The sender's company name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// company_name value will return a field validation error:
+        /// `company_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -296,8 +297,8 @@ pub enum PaymentSenderDetails {
         /// The type of identifier used as the reference.
         reference_type: String,
 
-        /// The source of the funds used to fund the card payout: "credit"
-        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        /// The source of the funds used to fund the card payout: `"credit"`,
+        /// `"debit"`, `"prepaid"`, `"deposit_account"`, `"mobile_money_account"`, `"cash"`
         source_of_funds: String,
     },
 }
@@ -311,7 +312,7 @@ pub enum DestinationAccountHolder {
         /// The account holder's first name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// first_name value will return a field validation error:
+        /// `first_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -323,7 +324,7 @@ pub enum DestinationAccountHolder {
         /// The account holder's last name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// last_name value will return a field validation error:
+        /// `last_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -341,7 +342,7 @@ pub enum DestinationAccountHolder {
         /// The corporate account holder's company name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// company_name value will return a field validation error:
+        /// `company_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -353,7 +354,7 @@ pub enum DestinationAccountHolder {
         /// The government account holder's company name.
         ///
         /// This must be a valid legal name. The following formats for the
-        /// company_name value will return a field validation error:
+        /// `company_name` value will return a field validation error:
         /// - a single character
         /// - all numeric characters
         /// - all punctuation characters
@@ -373,7 +374,7 @@ pub struct DestinationInstruction {
 
     /// The purpose of the payout.
     ///
-    /// - This field is required if the card's issuer_country is one of:
+    /// - This field is required if the card's `issuer_country` is one of:
     /// - AR (Argentina)
     /// - BD (Bangladesh)
     /// - CL (Chile)
@@ -382,11 +383,36 @@ pub struct DestinationInstruction {
     /// - IN (India)
     /// - MX (Mexico)
     ///
-    /// "family_support" "expatriation" "travel_and_tourism" "education"
-    /// "medical_treatment" "emergency_need" "leisure" "savings" "gifts"
-    /// "donations" "financial_services" "it_services" "investment" "insurance"
-    /// "loan_payment" "pension" "royalties" "other" "income"
-    pub purpose: Option<String>,
+    /// "family_support", "expatriation", "travel_and_tourism", "education",
+    /// "medical_treatment", "emergency_need", "leisure", "savings", "gifts",
+    /// "donations", "financial_services", "it_services", "investment", "insurance",
+    /// "loan_payment", "pension", "royalties", "other", "income"
+    pub purpose: Option<PayoutPurpose>,
+}
+
+/// The purpose of a payout
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum PayoutPurpose {
+    FamilySupport,
+    Expatriation,
+    TravelAndTourism,
+    Education,
+    MedicalTreatment,
+    EmergencyNeed,
+    Leisure,
+    Savings,
+    Gifts,
+    Donations,
+    FinancialServices,
+    ItServices,
+    Investment,
+    Insurance,
+    LoanPayment,
+    Pension,
+    Royalties,
+    Other,
+    Income,
 }
 
 /// A phone number
@@ -570,7 +596,7 @@ pub type Metadata = HashMap<String, String>;
 /// The response when a payment was processed successfully
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PaymentProcessed {
-    /// The payment's unique identifier (<= 30 characters, format `pay_*`)
+    /// The payment's unique identifier (<= 30 characters, format: `pay_*`)
     pub id: String,
 
     /// The unique identifier for the action performed against this payment (<=
@@ -631,8 +657,8 @@ pub struct PaymentProcessed {
 
     /// The links related to the payment
     ///
-    /// - Required: `"self"`, `"actions"`
-    /// - Optional: `"void"`, `"capture"`, `"refund"`
+    /// - Required: "self", "actions"
+    /// - Optional: "void", "capture", "refund"
     #[serde(rename = "_links")]
     pub links: Option<Links>,
 }
@@ -641,7 +667,7 @@ pub struct PaymentProcessed {
 /// action is required
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PendingPayment {
-    /// The payment's unique identifier (<= 30 characters, format `pay_*`)
+    /// The payment's unique identifier (<= 30 characters, format: `pay_*`)
     pub id: String,
 
     /// The status of the payment
@@ -669,9 +695,10 @@ pub struct PendingPayment {
 /// The status of the payment
 ///
 /// See: [Get Payment Details](https://docs.checkout.com/payments/manage-payments/get-payment-details)
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum PaymentStatus {
     Authorized,
+    #[default]
     Pending,
     #[serde(rename = "Card Verified")]
     CardVerified,
@@ -686,12 +713,6 @@ pub enum PaymentStatus {
     Cancelled,
     Paid,
     Expired,
-}
-
-impl Default for PaymentStatus {
-    fn default() -> PaymentStatus {
-        PaymentStatus::Pending
-    }
 }
 
 /// Information relating to the processing of 3D Secure payments
@@ -773,7 +794,7 @@ pub struct RiskResults {
 /// The processed payment's source type
 ///
 /// The payment source type. For any payment request sources that result in a
-/// card token (token`, source ID, etc.), this will be `card`; otherwise it
+/// card token (`token`, source ID, etc.), this will be `card`; otherwise it
 /// will be the name of the alternative payment method
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
@@ -1095,7 +1116,7 @@ pub enum CardMetadataFormat {
     #[serde(rename = "basic")]
     Basic,
 
-    /// A card_payouts formatted response will also include fields specific to
+    /// A `card_payouts` formatted response will also include fields specific to
     /// card payouts.
     #[serde(rename = "card_payouts")]
     CardPayouts,

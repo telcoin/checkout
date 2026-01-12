@@ -178,6 +178,7 @@ impl Amount {
     /// Creates the amount from the raw value and currency. The currency is
     /// required since the value is encoded as a scaled integer, which is
     /// different depending on the currency.
+    #[must_use]
     pub fn into(self, currency: Currency) -> BigDecimal {
         match currency {
             Currency::BIF
@@ -225,6 +226,7 @@ impl Amount {
     /// Creates the amount from the raw value and currency. The currency is
     /// required since the value is encoded as a scaled integer, which is
     /// different depending on the currency.
+    #[must_use]
     pub fn from(currency: Currency, amount: BigDecimal) -> Amount {
         match currency {
             Currency::BIF

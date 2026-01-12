@@ -33,9 +33,9 @@ pub struct ApiError {
 /// Encapsulates any error that can occur when sending a request to the
 /// Checkout API
 #[derive(thiserror::Error, Debug)]
-#[error("{0:?}")]
 pub enum Error {
     /// An error that was reported by the Checkout API
+    #[error("API error: {0:?}")]
     Api(ApiError),
 
     /// Not authorized
@@ -43,22 +43,33 @@ pub enum Error {
     Unauthorized,
 
     /// Invalid data was sent
+    #[error("Invalid data: {0:?}")]
     InvalidData(ApiError),
 
     /// To many requests or duplicate request detected
-    #[error("TooManyRequests")]
+    #[error("Too many requests")]
     TooManyRequests,
 
-    /// To many requests or duplicate request detected
-    #[error("Unknown({0:?}, {1:?})")]
+    /// An unknown error occurred
+    #[error("Unknown error: {0:?} {1:?}")]
     Unknown(StatusCode, String),
 
-    /// An error that ocurred during transport
+    /// An error that occurred during transport
+    #[error("Transport error: {0}")]
     Transport(#[from] ReqwestError),
+
+    /// An error that occurred while reading environment variables
+    #[error("Environment variable error: {0}")]
+    EnvVar(#[from] std::env::VarError),
+
+    /// An error that occurred while parsing the environment
+    #[error("Parse environment error: {0:?}")]
+    ParseEnvironment(#[from] ParseEnvironmentError),
 }
 
 /// Could not parse an environment, contains the original string.
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
+#[error("Could not parse environment: {0}")]
 pub struct ParseEnvironmentError(pub String);
 
 /// API environments to differentiate between testing environments and live.
@@ -107,7 +118,7 @@ impl fmt::Display for Environment {
             Environment::Production => "production",
             Environment::Sandbox => "sandbox",
         };
-        write!(f, "{}", env)
+        write!(f, "{env}")
     }
 }
 
@@ -122,6 +133,7 @@ impl Environment {
 
     /// Returns the appropriate url for authentication depending on the
     /// environment
+    #[must_use]
     pub fn access_url(&self) -> &str {
         match self {
             Environment::Sandbox => "https://access.sandbox.checkout.com",
@@ -159,13 +171,13 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// - [`std::env::VarError`]
+    /// - [`Error::EnvVar`]
     /// - [`Error::ParseEnvironment`]
-    pub fn from_env() -> Result<Client, ParseEnvironmentError> {
+    pub fn from_env() -> Result<Client, Error> {
         Ok(Client::new(
-            SecretString::new(std::env::var("CKO_USERNAME").unwrap()),
-            SecretString::new(std::env::var("CKO_PASSWORD").unwrap()),
-            std::env::var("CKO_ENVIRONMENT").unwrap().parse()?,
+            SecretString::new(std::env::var("CKO_USERNAME")?.into()),
+            SecretString::new(std::env::var("CKO_PASSWORD")?.into()),
+            std::env::var("CKO_ENVIRONMENT")?.parse()?,
         ))
     }
 
@@ -355,6 +367,18 @@ impl Client {
         self.send_post_request("gateway", &url, &body).await
     }
 
+    /// Creates a payment session for the Flow integration.
+    ///
+    /// [`POST /payment-sessions`](https://api-reference.checkout.com/#operation/CreatePaymentSession)
+    pub async fn create_payment_session(
+        &self,
+        request: &CreatePaymentSessionRequest,
+    ) -> Result<CreatePaymentSessionResponse, Error> {
+        let url = format!("{}/payment-sessions", self.environment.api_url());
+        self.send_post_request("payment-sessions", &url, request)
+            .await
+    }
+
     /// Refund a payment
     ///
     /// Refunds a payment if supported by the payment method.
@@ -420,16 +444,10 @@ mod tests {
 
     use super::*;
 
-    fn client() -> &'static Client {
+    fn client() -> Option<&'static Client> {
+        dotenvy::dotenv().ok();
         static INSTANCE: OnceCell<Client> = OnceCell::new();
-        INSTANCE.get_or_init(|| {
-            let dotenv_var = |key: &str| SecretString::new(dotenvy::var(key).expect(key));
-            Client::new(
-                dotenv_var("CKO_USERNAME"),
-                dotenv_var("CKO_PASSWORD"),
-                Environment::Sandbox,
-            )
-        })
+        INSTANCE.get_or_try_init(Client::from_env).ok()
     }
 
     fn create_payment(
@@ -438,50 +456,28 @@ mod tests {
         year: u32,
         cvv: Option<String>,
         amount: BigDecimal,
+        processing_channel_id: String,
     ) -> CreatePaymentRequest {
         // The Checkout sandbox uses certain card numbers, expiration dates,
         // cvvs, and amounts to trigger failure cases.
         //
         // https://docs.checkout.com/testing
 
-        let processing_channel_id = dotenvy::var("CKO_PROCESSING_CHANNEL_ID").unwrap();
-
-        CreatePaymentRequest {
-            source: Some(PaymentRequestSource::Card {
+        CreatePaymentRequest::builder()
+            .currency(Currency::USD)
+            .processing_channel_id(processing_channel_id)
+            .source(PaymentRequestSource::Card {
                 number,
                 expiry_month: month,
                 expiry_year: year,
                 name: None,
                 cvv,
                 stored: None,
-                billing_address: None,
+                billing_address: Box::new(None),
                 phone: None,
-            }),
-            destination: None,
-            amount: Some(Amount::from(Currency::USD, amount)),
-            currency: Currency::USD,
-            payment_type: PaymentType::Regular,
-            merchant_initiated: false,
-            reference: None,
-            description: None,
-            capture: None,
-            capture_on: None,
-            customer: None,
-            billing_descriptor: None,
-            shipping: None,
-            three_ds: None,
-            previous_payment_id: None,
-            risk: None,
-            success_url: None,
-            failure_url: None,
-            payment_ip: None,
-            recipient: None,
-            processing: None,
-            processing_channel_id,
-            instruction: None,
-            sender: None,
-            metadata: None,
-        }
+            })
+            .amount(Amount::from(Currency::USD, amount))
+            .build()
     }
 
     fn create_payout(
@@ -489,20 +485,21 @@ mod tests {
         month: u32,
         year: u32,
         amount: BigDecimal,
+        processing_channel_id: String,
+        currency_account_id: String,
     ) -> CreatePaymentRequest {
         // The Checkout sandbox uses certain card numbers, expiration dates,
         // cvvs, and amounts to trigger failure cases.
         //
         // https://docs.checkout.com/testing
 
-        let processing_channel_id = dotenvy::var("CKO_PROCESSING_CHANNEL_ID").unwrap();
-        let currency_account_id = dotenvy::var("CKO_CURRENCY_ACCOUNT_ID").unwrap();
-
-        CreatePaymentRequest {
-            source: Some(PaymentRequestSource::CurrencyAccount {
+        CreatePaymentRequest::builder()
+            .currency(Currency::USD)
+            .processing_channel_id(processing_channel_id)
+            .source(PaymentRequestSource::CurrencyAccount {
                 id: currency_account_id,
-            }),
-            destination: Some(PaymentRequestDestination::Card {
+            })
+            .destination(PaymentRequestDestination::Card {
                 number,
                 expiry_month: month,
                 expiry_year: year,
@@ -511,32 +508,13 @@ mod tests {
                     last_name: Some("User".to_owned()),
                     middle_name: None,
                 },
-            }),
-            amount: Some(Amount::from(Currency::USD, amount)),
-            currency: Currency::USD,
-            payment_type: PaymentType::Regular,
-            merchant_initiated: false,
-            reference: None,
-            description: None,
-            capture: None,
-            capture_on: None,
-            customer: None,
-            billing_descriptor: None,
-            shipping: None,
-            three_ds: None,
-            previous_payment_id: None,
-            risk: None,
-            success_url: None,
-            failure_url: None,
-            payment_ip: None,
-            recipient: None,
-            processing: None,
-            processing_channel_id,
-            instruction: Some(DestinationInstruction {
+            })
+            .amount(Amount::from(Currency::USD, amount))
+            .instruction(DestinationInstruction {
                 funds_transfer_type: Some("FT".to_owned()),
                 purpose: None,
-            }),
-            sender: Some(PaymentSenderDetails::Individual {
+            })
+            .sender(PaymentSenderDetails::Individual {
                 first_name: "Test".to_owned(),
                 middle_name: None,
                 last_name: "User".to_owned(),
@@ -554,23 +532,27 @@ mod tests {
                 reference: "12345678".to_owned(),
                 reference_type: "other".to_owned(),
                 source_of_funds: "mobile_money_account".to_owned(),
-            }),
-            metadata: None,
-        }
+            })
+            .build()
     }
 
     #[tokio::test]
     async fn payment_request_processed() {
+        let Some(client) = client() else { return };
+        let Ok(processing_channel_id) = std::env::var("CKO_PROCESSING_CHANNEL_ID") else {
+            return;
+        };
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
             2025,
             None,
             BigDecimal::try_from(20.00).unwrap(),
+            processing_channel_id,
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client().create_payment(payment).await.unwrap();
+        let response = client.create_payment(payment).await.unwrap();
 
         let processed_payment = match response {
             CreatePaymentResponse::Processed(processed) => processed,
@@ -598,16 +580,21 @@ mod tests {
     #[tokio::test]
     #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
     async fn payment_request_declined() {
+        let Some(client) = client() else { return };
+        let Ok(processing_channel_id) = std::env::var("CKO_PROCESSING_CHANNEL_ID") else {
+            return;
+        };
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
             2025,
             None,
             BigDecimal::try_from(123.05).unwrap(),
+            processing_channel_id,
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client().create_payment(payment).await;
+        let response = client.create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
@@ -615,31 +602,45 @@ mod tests {
     #[ignore] // response code is 10000 (Approved) even with XXX12 as the amount
     #[tokio::test]
     async fn payment_request_invalid() {
+        let Some(client) = client() else { return };
+        let Ok(processing_channel_id) = std::env::var("CKO_PROCESSING_CHANNEL_ID") else {
+            return;
+        };
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
             2025,
             Some("100".to_string()),
             BigDecimal::try_from(123.12).unwrap(),
+            processing_channel_id,
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client().create_payment(payment).await;
+        let response = client.create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
     }
 
     #[tokio::test]
     async fn payout_request_processed() {
+        let Some(client) = client() else { return };
+        let Ok(processing_channel_id) = std::env::var("CKO_PROCESSING_CHANNEL_ID") else {
+            return;
+        };
+        let Ok(currency_account_id) = std::env::var("CKO_CURRENCY_ACCOUNT_ID") else {
+            return;
+        };
         let payment = create_payout(
             "4242424242424242".to_string(),
             6,
             2025,
             BigDecimal::try_from(20.00).unwrap(),
+            processing_channel_id,
+            currency_account_id,
         );
         let payment: &'static _ = Box::leak(Box::new(payment));
 
-        let response = client().create_payment(payment).await.unwrap();
+        let response = client.create_payment(payment).await.unwrap();
 
         let processed_payment = match response {
             CreatePaymentResponse::Processed(processed) => processed,
@@ -666,7 +667,8 @@ mod tests {
 
     #[tokio::test]
     async fn request_card_metadata() {
-        let response = client()
+        let Some(client) = client() else { return };
+        let response = client
             .get_card_metadata(
                 CardMetadataSource::Card {
                     number: "4242424242424242".to_owned(),
@@ -678,5 +680,42 @@ mod tests {
 
         assert_eq!(response.scheme, "visa");
         assert_eq!(response.issuer_country.as_deref(), Some("GB"));
+    }
+
+    #[tokio::test]
+    async fn payment_session_request_processed() {
+        let Some(client) = client() else { return };
+        let request = CreatePaymentSessionRequest {
+            amount: 2000,
+            currency: Currency::USD,
+            reference: "rust-sdk-test".to_string(),
+            billing: None,
+            customer: None,
+            success_url: "https://example.com/success".to_string(),
+            failure_url: "https://example.com/failure".to_string(),
+        };
+
+        let response = client.create_payment_session(&request).await.unwrap();
+
+        assert!(response.id.starts_with("ps_"));
+        assert!(response.payment_session_secret.starts_with("pss_"));
+    }
+
+    #[tokio::test]
+    async fn payment_session_request_declined() {
+        let Some(client) = client() else { return };
+        let request = CreatePaymentSessionRequest {
+            amount: 0,
+            currency: Currency::USD,
+            reference: "rust-sdk-test".to_string(),
+            billing: None,
+            customer: None,
+            success_url: "https://example.com/success".to_string(),
+            failure_url: "https://example.com/failure".to_string(),
+        };
+
+        let response = client.create_payment_session(&request).await;
+
+        assert!(matches!(response, Err(Error::InvalidData(_))));
     }
 }

@@ -1,4 +1,10 @@
-use super::*;
+use bon::Builder;
+
+use super::{
+    Amount, BillingDescriptor, Currency, CustomerDescriptor, DestinationInstruction, Metadata,
+    PaymentProcessingDescriptor, PaymentRecipient, PaymentRequestDestination, PaymentRequestSource,
+    PaymentSenderDetails, PaymentType, RiskRequest, Serialize, ShippingDescriptor, _3DSRequest,
+};
 
 /// The request body to be used to authenticate
 #[derive(Serialize, Debug, Clone)]
@@ -23,7 +29,7 @@ pub struct OAuthTokenRequest {
 /// `destination.type` field, along with the destination-specific data.
 ///
 /// See: [Payment Methods](https://docs.checkout.com/payments/payment-methods)
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, Builder)]
 pub struct CreatePaymentRequest {
     /// The source of the payment. Use to request a payment.
     pub source: Option<PaymentRequestSource>,
@@ -43,12 +49,14 @@ pub struct CreatePaymentRequest {
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order) (default:
     /// Regular)
+    #[builder(default)]
     pub payment_type: PaymentType,
 
     /// Flags the payment as a merchant-initiated transaction (MIT). Must be
     /// set to true for all MITs.
     ///
     /// See: [Requirements for stored payment details](https://docs.checkout.com/payments/store-payment-details/requirements-for-stored-payment-details)
+    #[builder(default)]
     pub merchant_initiated: bool,
 
     /// A reference you can later use to identify this payment, such as an
@@ -165,6 +173,31 @@ pub struct RefundPaymentBody {
     /// This can be useful for storing additional information in a structured
     /// format
     pub metadata: Option<Metadata>,
+}
+
+/// Request body for creating a payment session
+#[derive(Serialize, Debug, Clone)]
+pub struct CreatePaymentSessionRequest {
+    /// The payment amount
+    pub amount: u64,
+
+    /// The three-letter ISO currency code
+    pub currency: Currency,
+
+    /// A reference you can later use to identify this payment session
+    pub reference: String,
+
+    /// The billing details
+    pub billing: Option<BillingDescriptor>,
+
+    /// The customer's details
+    pub customer: Option<CustomerDescriptor>,
+
+    /// The URL to redirect to if the payment is successful
+    pub success_url: String,
+
+    /// The URL to redirect to if the payment fails
+    pub failure_url: String,
 }
 
 /// Body used in the request to void a payment
