@@ -64,10 +64,6 @@ impl<'a> Flows<'a> {
     /// Creates a payment session for the Flow integration.
     ///
     /// [`POST /payment-sessions`](https://api-reference.checkout.com/#operation/createPaymentSession)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn create_payment_session(
         &self,
         request: &CreatePaymentSessionRequest,

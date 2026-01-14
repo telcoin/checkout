@@ -32,10 +32,6 @@ impl<'a> Payments<'a> {
     /// response.
     ///
     /// [`POST /payments`](https://api-reference.checkout.com/#operation/requestAPaymentOrPayout)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn create_payment(
         &self,
         request: &CreatePaymentRequest,
@@ -57,10 +53,6 @@ impl<'a> Payments<'a> {
     /// can be used to obtain the details of the payment
     ///
     /// [`GET /payments/{id}`](https://api-reference.checkout.com/#operation/getPaymentDetails)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn get_payment_details(
         &self,
         payment_id: String,
@@ -79,10 +71,6 @@ impl<'a> Payments<'a> {
     /// date in descending order (latest first).
     ///
     /// [`GET /payments/{id}/actions`](https://api-reference.checkout.com/#operation/getPaymentActions)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn get_payment_actions(
         &self,
         payment_id: String,
@@ -103,10 +91,6 @@ impl<'a> Payments<'a> {
     /// can use webhooks to be notified if the capture is successful.
     ///
     /// [`POST /payments/{id}/captures`](https://api-reference.checkout.com/#operation/captureAPayment)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn capture_payment(
         &self,
         payment_id: String,
@@ -128,10 +112,6 @@ impl<'a> Payments<'a> {
     /// can use webhooks to be notified if the refund is successful.
     ///
     /// [`POST /payments/{id}/refunds`](https://api-reference.checkout.com/#operation/refundAPayment)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn refund_payment(
         &self,
         payment_id: String,
@@ -153,10 +133,6 @@ impl<'a> Payments<'a> {
     /// use webhooks to be notified if the void is successful.
     ///
     /// [`POST /payments/{id}/voids`](https://api-reference.checkout.com/#operation/voidAPayment)
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
     pub async fn void_payment(
         &self,
         payment_id: String,

@@ -11,7 +11,7 @@ pub struct Amount(u64);
 /// These are the major currencies supported
 ///
 /// See [Currency Codes](https://docs.checkout.com/resources/codes/currency-codes)
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum Currency {
     AED,

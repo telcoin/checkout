@@ -18,9 +18,7 @@ impl<'a> CardMetadata<'a> {
     /// Account Number (PAN), Bank Identification Number (BIN), token, or
     /// instrument supplied.
     ///
-    /// # Errors
-    ///
-    /// Returns error if the API request fails.
+    /// [`POST /metadata/card`](https://api-reference.checkout.com/#operation/getCardMetadata)
     pub async fn get_card(
         &self,
         source: CardMetadataSource,

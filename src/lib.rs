@@ -4,13 +4,9 @@
 //! API Reference: <https://api-reference.checkout.com>
 
 #![forbid(unsafe_code)]
-#![warn(
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
-    clippy::pedantic
-)]
 #![deny(missing_docs, missing_debug_implementations)]
-#![allow(clippy::doc_markdown)]
+#![warn(clippy::missing_panics_doc, clippy::pedantic)]
+#![allow(clippy::doc_markdown, clippy::missing_errors_doc)]
 
 use std::{convert::TryFrom, fmt, str::FromStr};
 
@@ -84,7 +80,7 @@ pub struct InvalidEnvironmentError(pub String);
 
 /// API environments to differentiate between testing environments and live.
 #[derive(PartialEq, Copy, Clone, Debug)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Environment {
     Production,
     Sandbox,
