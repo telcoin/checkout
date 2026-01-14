@@ -1,4 +1,5 @@
-use checkout::*;
+use checkout::Client;
+use checkout::models::metadata::CardMetadataSource;
 
 fn client() -> Option<Client> {
     dotenvy::dotenv().ok();

@@ -1,6 +1,12 @@
 use bigdecimal::BigDecimal;
 
-use checkout::*;
+use checkout::Client;
+use checkout::models::payments::{CreatePaymentRequest, CreatePaymentResponse};
+use checkout::models::shared::{
+    Address, Amount, Currency, DestinationAccountHolder, DestinationInstruction,
+    PaymentProcessedSource, PaymentRequestDestination, PaymentRequestSource, PaymentSenderDetails,
+    PaymentStatus,
+};
 
 fn client() -> Option<Client> {
     dotenvy::dotenv().ok();

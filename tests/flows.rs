@@ -1,4 +1,6 @@
-use checkout::*;
+use checkout::models::flows::{CreatePaymentSessionRequest, CreatePaymentSessionResponse};
+use checkout::models::shared::{Address, BillingInformation, Currency, CustomerDescriptor};
+use checkout::{Client, Error, StatusCode};
 
 fn client() -> Option<Client> {
     dotenvy::dotenv().ok();

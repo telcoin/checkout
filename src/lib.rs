@@ -18,11 +18,14 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+/// API clients
 mod apis;
-mod models;
+/// API models
+pub mod models;
 
-pub use apis::*;
-pub use models::*;
+use apis::CardMetadata;
+use apis::Flows;
+use apis::Payments;
 
 /// An error that was reported by the Checkout API
 #[derive(Deserialize, Debug)]

@@ -1,7 +1,5 @@
-use bon::Builder;
-use serde::{Deserialize, Serialize};
-
-use crate::{CardMetadataFormat, CardMetadataSource, Client, Error};
+use crate::models::metadata::{CardMetadataFormat, CardMetadataSource};
+use crate::{Client, Error};
 
 /// Access the Metadata API.
 #[derive(Debug, Clone)]
@@ -33,40 +31,4 @@ impl<'a> CardMetadata<'a> {
     }
 }
 
-/// Request card metadata
-#[derive(Serialize, Deserialize, Debug, Clone, Builder)]
-pub struct CardMetadataRequest {
-    /// The source object
-    pub source: CardMetadataSource,
-
-    /// The format to provide the output in.
-    ///
-    /// Default is "basic"
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub format: Option<CardMetadataFormat>,
-}
-
-/// Response with card metadata
-#[derive(Deserialize, Debug, Clone)]
-pub struct CardMetadataResponse {
-    /// The issuer's Bank Identification Number (BIN)
-    pub bin: String,
-
-    /// The global card scheme. For example, `american_express`,
-    /// `cartes_bancaires`, `diners_club_international`, `discover`,
-    /// `jcb`, `mastercard`, or `visa`.
-    pub scheme: String,
-
-    /// The card type: `CREDIT`, `DEBIT`, `PREPAID`, `CHARGE`, or `DEFERRED DEBIT`
-    pub card_type: Option<String>,
-
-    /// The card category: `CONSUMER` or `COMMERCIAL`
-    pub card_category: Option<String>,
-
-    /// The card issuer
-    pub issuer: Option<String>,
-
-    /// The card issuer's country, as an ISO-2 code
-    pub issuer_country: Option<String>,
-    // and more
-}
+use crate::models::metadata::{CardMetadataRequest, CardMetadataResponse};
