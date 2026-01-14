@@ -1,7 +1,9 @@
 //! Client library for the [Checkout](https://www.checkout.com) API.
 //!
 //! Documentation: <https://docs.checkout.com>
+//!
 //! API Reference: <https://api-reference.checkout.com>
+//!
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs, missing_debug_implementations)]
@@ -211,7 +213,7 @@ impl Client {
     /// # Errors
     ///
     /// - [`Error::EnvVar`]
-    /// - [`Error::ParseEnvironment`]
+    /// - [`Error::InvalidEnvironment`]
     pub fn from_env() -> Result<Client, Error> {
         Ok(Client::new(
             SecretString::new(std::env::var("CKO_USERNAME")?.into()),

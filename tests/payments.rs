@@ -1,12 +1,10 @@
 use bigdecimal::BigDecimal;
-use once_cell::sync::OnceCell;
 
 use checkout::*;
 
-fn client() -> Option<&'static Client> {
+fn client() -> Option<Client> {
     dotenvy::dotenv().ok();
-    static INSTANCE: OnceCell<Client> = OnceCell::new();
-    INSTANCE.get_or_try_init(Client::from_env).ok()
+    Client::from_env().ok()
 }
 
 fn create_payment(

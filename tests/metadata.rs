@@ -1,10 +1,8 @@
 use checkout::*;
-use once_cell::sync::OnceCell;
 
-fn client() -> Option<&'static Client> {
+fn client() -> Option<Client> {
     dotenvy::dotenv().ok();
-    static INSTANCE: OnceCell<Client> = OnceCell::new();
-    INSTANCE.get_or_try_init(Client::from_env).ok()
+    Client::from_env().ok()
 }
 
 #[tokio::test]
