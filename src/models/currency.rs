@@ -226,6 +226,10 @@ impl Amount {
     /// Creates the amount from the raw value and currency. The currency is
     /// required since the value is encoded as a scaled integer, which is
     /// different depending on the currency.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the amount cannot be represented as a u64.
     #[must_use]
     pub fn from(currency: Currency, amount: BigDecimal) -> Amount {
         match currency {
