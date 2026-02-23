@@ -11,7 +11,7 @@ pub struct Amount(u64);
 /// These are the major currencies supported
 ///
 /// See [Currency Codes](https://docs.checkout.com/resources/codes/currency-codes)
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum Currency {
     AED,
@@ -178,6 +178,7 @@ impl Amount {
     /// Creates the amount from the raw value and currency. The currency is
     /// required since the value is encoded as a scaled integer, which is
     /// different depending on the currency.
+    #[must_use]
     pub fn into(self, currency: Currency) -> BigDecimal {
         match currency {
             Currency::BIF
@@ -225,6 +226,11 @@ impl Amount {
     /// Creates the amount from the raw value and currency. The currency is
     /// required since the value is encoded as a scaled integer, which is
     /// different depending on the currency.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the amount cannot be represented as a u64.
+    #[must_use]
     pub fn from(currency: Currency, amount: BigDecimal) -> Amount {
         match currency {
             Currency::BIF
