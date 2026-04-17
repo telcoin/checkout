@@ -85,3 +85,28 @@ pub struct VoidPaymentResponse {
     #[serde(rename = "_links")]
     pub links: Option<Links>,
 }
+
+/// Response with card metadata
+#[derive(Deserialize, Debug, Clone)]
+pub struct CardMetadataResponse {
+    /// The issuer's Bank Identification Number (BIN)
+    pub bin: String,
+
+    /// The global card scheme. For example, "american_express",
+    /// "cartes_bancaires", "diners_club_international", "discover",
+    /// "jcb", "mastercard", or "visa".
+    pub scheme: String,
+
+    /// The card type: "CREDIT" "DEBIT" "PREPAID" "CHARGE" "DEFERRED DEBIT"
+    pub card_type: Option<String>,
+
+    /// The card category: "CONSUMER" "COMMERCIAL"
+    pub card_category: Option<String>,
+
+    /// The card issuer
+    pub issuer: Option<String>,
+
+    /// The card issuer's country, as an ISO-2 code
+    pub issuer_country: Option<String>,
+    // and more
+}

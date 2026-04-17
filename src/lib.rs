@@ -169,11 +169,11 @@ impl Client {
         ))
     }
 
-    async fn authorize(&self) -> Result<String, Error> {
+    async fn authorize(&self, scope: &str) -> Result<String, Error> {
         let url = format!("{}/connect/token", self.environment.access_url());
         let body = OAuthTokenRequest {
             grant_type: "client_credentials".to_string(),
-            scope: "gateway".to_string(),
+            scope: scope.to_owned(),
         };
 
         let response = self
@@ -197,11 +197,11 @@ impl Client {
         }
     }
 
-    async fn send_get_request<R>(&self, url: &str) -> Result<R, Error>
+    async fn send_get_request<R>(&self, scope: &str, url: &str) -> Result<R, Error>
     where
         R: DeserializeOwned,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         let response = self.http_client.get(url).bearer_auth(token).send().await?;
 
@@ -212,12 +212,12 @@ impl Client {
         }
     }
 
-    async fn send_post_request<B, R>(&self, url: &str, body: &B) -> Result<R, Error>
+    async fn send_post_request<B, R>(&self, scope: &str, url: &str, body: &B) -> Result<R, Error>
     where
         B: Serialize,
         R: DeserializeOwned,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         let response = self
             .http_client
@@ -234,11 +234,16 @@ impl Client {
         }
     }
 
-    async fn send_post_request_2<B>(&self, url: &str, body: &B) -> Result<Response, Error>
+    async fn send_post_request_2<B>(
+        &self,
+        scope: &str,
+        url: &str,
+        body: &B,
+    ) -> Result<Response, Error>
     where
         B: Serialize,
     {
-        let token = self.authorize().await?;
+        let token = self.authorize(scope).await?;
 
         self.http_client
             .post(url)
@@ -267,7 +272,7 @@ impl Client {
         request: &CreatePaymentRequest,
     ) -> Result<CreatePaymentResponse, Error> {
         let url = format!("{}/payments", self.environment.api_url());
-        let response = self.send_post_request_2(&url, request).await?;
+        let response = self.send_post_request_2("gateway", &url, request).await?;
 
         let status = response.status();
         match status {
@@ -308,7 +313,7 @@ impl Client {
         payment_id: String,
     ) -> Result<GetPaymentDetailsResponse, Error> {
         let url = format!("{}/payments/{}", self.environment.api_url(), payment_id);
-        self.send_get_request(&url).await
+        self.send_get_request("gateway", &url).await
     }
 
     /// Get payment actions
@@ -326,7 +331,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_get_request(&url).await
+        self.send_get_request("gateway", &url).await
     }
 
     /// Capture a payment
@@ -347,7 +352,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
     }
 
     /// Refund a payment
@@ -368,7 +373,7 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
     }
 
     /// Void a payment
@@ -389,7 +394,22 @@ impl Client {
             self.environment.api_url(),
             payment_id
         );
-        self.send_post_request(&url, &body).await
+        self.send_post_request("gateway", &url, &body).await
+    }
+
+    /// Returns a single metadata record for the card specified by the Primary
+    /// Account Number (PAN), Bank Identification Number (BIN), token, or
+    /// instrument supplied.
+    pub async fn get_card_metadata(
+        &self,
+        source: CardMetadataSource,
+        format: Option<CardMetadataFormat>,
+    ) -> Result<CardMetadataResponse, Error> {
+        let body = CardMetadataRequest { source, format };
+        let url = format!("{}/metadata/card", self.environment.api_url());
+
+        self.send_post_request("vault:card-metadata", &url, &body)
+            .await
     }
 }
 
@@ -458,12 +478,89 @@ mod tests {
             recipient: None,
             processing: None,
             processing_channel_id,
+            instruction: None,
+            sender: None,
+            metadata: None,
+        }
+    }
+
+    fn create_payout(
+        number: String,
+        month: u32,
+        year: u32,
+        amount: BigDecimal,
+    ) -> CreatePaymentRequest {
+        // The Checkout sandbox uses certain card numbers, expiration dates,
+        // cvvs, and amounts to trigger failure cases.
+        //
+        // https://docs.checkout.com/testing
+
+        let processing_channel_id = dotenvy::var("CKO_PROCESSING_CHANNEL_ID").unwrap();
+        let currency_account_id = dotenvy::var("CKO_CURRENCY_ACCOUNT_ID").unwrap();
+
+        CreatePaymentRequest {
+            source: Some(PaymentRequestSource::CurrencyAccount {
+                id: currency_account_id,
+            }),
+            destination: Some(PaymentRequestDestination::Card {
+                number,
+                expiry_month: month,
+                expiry_year: year,
+                account_holder: DestinationAccountHolder::Individual {
+                    first_name: Some("Test".to_owned()),
+                    last_name: Some("User".to_owned()),
+                    middle_name: None,
+                },
+            }),
+            amount: Some(Amount::from(Currency::USD, amount)),
+            currency: Currency::USD,
+            payment_type: PaymentType::Regular,
+            merchant_initiated: false,
+            reference: None,
+            description: None,
+            capture: None,
+            capture_on: None,
+            customer: None,
+            billing_descriptor: None,
+            shipping: None,
+            three_ds: None,
+            previous_payment_id: None,
+            risk: None,
+            success_url: None,
+            failure_url: None,
+            payment_ip: None,
+            recipient: None,
+            processing: None,
+            processing_channel_id,
+            instruction: Some(DestinationInstruction {
+                funds_transfer_type: Some("FT".to_owned()),
+                purpose: None,
+            }),
+            sender: Some(PaymentSenderDetails::Individual {
+                first_name: "Test".to_owned(),
+                middle_name: None,
+                last_name: "User".to_owned(),
+                date_of_birth: None,
+                country_of_birth: None,
+                nationality: None,
+                address: Address {
+                    address_line1: Some("123 Main St".to_owned()),
+                    address_line2: None,
+                    city: Some("Los Angeles".to_owned()),
+                    state: Some("CA".to_owned()),
+                    zip: Some("90051".to_owned()),
+                    country: Some("US".to_owned()),
+                },
+                reference: "12345678".to_owned(),
+                reference_type: "other".to_owned(),
+                source_of_funds: "mobile_money_account".to_owned(),
+            }),
             metadata: None,
         }
     }
 
     #[tokio::test]
-    async fn payout_request_processed() {
+    async fn payment_request_processed() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -480,7 +577,7 @@ mod tests {
             CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
         };
 
-        assert_eq!(processed_payment.approved, true);
+        assert_eq!(processed_payment.approved, Some(true));
         assert_eq!(processed_payment.status, PaymentStatus::Authorized);
 
         match processed_payment.source {
@@ -500,7 +597,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore] // response code is 10000 (Approved) even with XXX05 as the amount
-    async fn payout_request_declined() {
+    async fn payment_request_declined() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -517,7 +614,7 @@ mod tests {
 
     #[ignore] // response code is 10000 (Approved) even with XXX12 as the amount
     #[tokio::test]
-    async fn payout_request_invalid() {
+    async fn payment_request_invalid() {
         let payment = create_payment(
             "4242424242424242".to_string(),
             6,
@@ -530,5 +627,56 @@ mod tests {
         let response = client().create_payment(payment).await;
 
         assert!(matches!(response, Ok(_)));
+    }
+
+    #[tokio::test]
+    async fn payout_request_processed() {
+        let payment = create_payout(
+            "4242424242424242".to_string(),
+            6,
+            2025,
+            BigDecimal::try_from(20.00).unwrap(),
+        );
+        let payment: &'static _ = Box::leak(Box::new(payment));
+
+        let response = client().create_payment(payment).await.unwrap();
+
+        let processed_payment = match response {
+            CreatePaymentResponse::Processed(processed) => processed,
+            CreatePaymentResponse::Pending(pending) => panic!("response is pending: {:?}", pending),
+        };
+
+        assert_eq!(processed_payment.approved, Some(true));
+        assert_eq!(processed_payment.status, PaymentStatus::Authorized);
+
+        match processed_payment.source {
+            Some(PaymentProcessedSource::Card {
+                expiry_month,
+                expiry_year,
+                last4,
+                ..
+            }) => {
+                assert_eq!(expiry_month, 6);
+                assert_eq!(expiry_year, 2025);
+                assert_eq!(last4, "4242".to_string());
+            }
+            other => panic!("payment source is not card: {:?}", other),
+        };
+    }
+
+    #[tokio::test]
+    async fn request_card_metadata() {
+        let response = client()
+            .get_card_metadata(
+                CardMetadataSource::Card {
+                    number: "4242424242424242".to_owned(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.scheme, "visa");
+        assert_eq!(response.issuer_country.as_deref(), Some("GB"));
     }
 }

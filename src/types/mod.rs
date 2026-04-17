@@ -36,7 +36,7 @@ pub struct PaymentDetails {
 
     /// This must be specified for card payments where the cardholder is not
     /// present (i.e., recurring or mail order / telephone order)
-    pub payment_type: PaymentType,
+    pub payment_type: Option<PaymentType>,
 
     /// Your reference for the payment
     pub reference: Option<String>,
@@ -45,7 +45,7 @@ pub struct PaymentDetails {
     pub description: Option<String>,
 
     /// Whether or not the authorization or capture was successful
-    pub approved: bool,
+    pub approved: Option<bool>,
 
     /// The status of the payment
     pub status: PaymentStatus,
@@ -59,10 +59,6 @@ pub struct PaymentDetails {
 
     /// The customer associated with the payment, if provided in the request
     pub customer: Option<CustomerInfo>,
-
-    /// An optional dynamic billing descriptor displayed on the account owner's
-    /// statement
-    pub billing_descriptor: Option<BillingDescriptor>,
 
     /// The shipping details
     pub shipping: Option<ShippingDescriptor>,
@@ -150,6 +146,13 @@ pub enum PaymentRequestSource {
         /// The token retrieved by posting card details to `/tokens` beforehand
         token: String,
     },
+
+    /// A Checkout currency account
+    #[serde(rename = "currency_account")]
+    CurrencyAccount {
+        /// The ID of the currency account that will fund the payout
+        id: String,
+    },
 }
 
 /// The payout destination type
@@ -163,25 +166,23 @@ pub enum PaymentRequestDestination {
         number: String,
 
         /// The expiry month of the card (1-2 characters)
-        expiry_month: String,
+        expiry_month: u32,
 
         /// The expiry year of the card (4 characters)
-        expiry_year: String,
+        expiry_year: u32,
 
-        /// The payout destination owner's first name
-        first_name: String,
+        /// The payout destination account holder
+        account_holder: DestinationAccountHolder,
+    },
 
-        /// The payout destination owner's last name
-        last_name: String,
+    /// A token representing a debit/credit/etc card
+    #[serde(rename = "token")]
+    Token {
+        /// The token retrieved by posting card details to `/tokens` beforehand
+        token: String,
 
-        /// The name of the cardholder
-        name: Option<String>,
-
-        /// The billing address of the cardholder
-        billing_address: Option<Address>,
-
-        /// The phone number of the cardholder
-        phone: Option<PhoneNumber>,
+        /// The payout destination account holder
+        account_holder: DestinationAccountHolder,
     },
 }
 
@@ -197,6 +198,195 @@ pub enum PaymentType {
     /// A Merchant Offline Telephone Order
     #[serde(rename = "MOTO")]
     Moto,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum PaymentSenderDetails {
+    #[serde(rename = "individual")]
+    Individual {
+        /// The account holder's first name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// first_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        first_name: String,
+
+        /// The account holder's middle name.
+        middle_name: Option<String>,
+
+        /// The account holder's last name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// last_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        last_name: String,
+
+        /// The sender's date of birth, in the format YYYY-MM-DD.
+        ///
+        /// This field is required for cross-border money transfers.
+        date_of_birth: Option<String>,
+
+        /// The sender's country of birth, as a two-letter ISO country code.
+        country_of_birth: Option<String>,
+
+        /// The sender's nationality, as a two-letter ISO country code.
+        nationality: Option<String>,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+
+    #[serde(rename = "corporate")]
+    Corporate {
+        /// The corporate sender's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+
+    #[serde(rename = "government")]
+    Government {
+        /// The sender's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+
+        /// The sender's registered corporate address.
+        address: Address,
+
+        /// The unique identifier for the sender. For example a customer number
+        reference: String,
+
+        /// The type of identifier used as the reference.
+        reference_type: String,
+
+        /// The source of the funds used to fund the card payout: "credit"
+        /// "debit" "prepaid" "deposit_account" "mobile_money_account" "cash"
+        source_of_funds: String,
+    },
+}
+
+/// The payout destination account holder
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum DestinationAccountHolder {
+    #[serde(rename = "individual")]
+    Individual {
+        /// The account holder's first name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// first_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        ///
+        /// This field is not required if the first name is already stored with
+        /// the token or payment instrument id provided in destination.
+        first_name: Option<String>,
+
+        /// The account holder's last name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// last_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        ///
+        /// This field is not required if the last name is already stored with
+        /// the token or payment instrument id provided in destination.
+        last_name: Option<String>,
+
+        /// The account holder's middle name.
+        middle_name: Option<String>,
+    },
+
+    #[serde(rename = "corporate")]
+    Corporate {
+        /// The corporate account holder's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+    },
+
+    #[serde(rename = "government")]
+    Government {
+        /// The government account holder's company name.
+        ///
+        /// This must be a valid legal name. The following formats for the
+        /// company_name value will return a field validation error:
+        /// - a single character
+        /// - all numeric characters
+        /// - all punctuation characters
+        company_name: String,
+    },
+}
+
+/// Additional details about the payout instruction.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DestinationInstruction {
+    /// The funds transfer type code for the type of payout you're performing.
+    ///
+    /// You can only use codes that have been assigned to you by the card schemes and Checkout.com, based on your business case and requirements.
+    ///
+    /// If you have only been assigned one funds transfer type code, this field is optional.
+    pub funds_transfer_type: Option<String>,
+
+    /// The purpose of the payout.
+    ///
+    /// - This field is required if the card's issuer_country is one of:
+    /// - AR (Argentina)
+    /// - BD (Bangladesh)
+    /// - CL (Chile)
+    /// - CO (Colombia)
+    /// - EG (Egypt)
+    /// - IN (India)
+    /// - MX (Mexico)
+    ///
+    /// "family_support" "expatriation" "travel_and_tourism" "education"
+    /// "medical_treatment" "emergency_need" "leisure" "savings" "gifts"
+    /// "donations" "financial_services" "it_services" "investment" "insurance"
+    /// "loan_payment" "pension" "royalties" "other" "income"
+    pub purpose: Option<String>,
 }
 
 /// A phone number
@@ -394,7 +584,7 @@ pub struct PaymentProcessed {
     pub currency: Currency,
 
     /// Whether or not the authorization or capture was successful
-    pub approved: bool,
+    pub approved: Option<bool>,
 
     /// The status of the payment
     pub status: PaymentStatus,
@@ -658,6 +848,14 @@ pub enum PaymentProcessedSource {
         /// Apple Pay, Google Pay)
         payment_account_reference: Option<String>,
     },
+
+    /// The only source for payouts
+    #[serde(rename = "currency_account")]
+    CurrencyAccount {
+        /// The payment source identifier, which can be used for subsequent
+        /// payments
+        id: String,
+    },
 }
 
 /// The processed payment's destination type
@@ -705,7 +903,7 @@ pub enum PaymentProcessedDestination {
         card_type: Option<CardType>,
 
         /// The card category
-        card_category: CardCategory,
+        card_category: Option<CardCategory>,
 
         /// The name of the card issuer
         issuer: Option<String>,
@@ -858,4 +1056,59 @@ pub enum ActionType {
     Capture,
     Refund,
     Payout,
+}
+
+/// The source to get card metadata
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum CardMetadataSource {
+    #[serde(rename = "card")]
+    Card {
+        /// The Primary Account Number
+        number: String,
+    },
+
+    #[serde(rename = "bin")]
+    Bin {
+        /// The issuer's Bank Identification Number
+        bin: String,
+    },
+
+    #[serde(rename = "token")]
+    Token {
+        /// The Checkout.com unique token that was generated when the card's
+        /// details were tokenized
+        token: String,
+    },
+
+    #[serde(rename = "id")]
+    Id {
+        /// The unique ID for the payment instrument that was created using the
+        /// card's details
+        id: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum CardMetadataFormat {
+    /// A basic response will only include standard metadata
+    #[serde(rename = "basic")]
+    Basic,
+
+    /// A card_payouts formatted response will also include fields specific to
+    /// card payouts.
+    #[serde(rename = "card_payouts")]
+    CardPayouts,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CardMetadataRequest {
+    /// The source object
+    pub source: CardMetadataSource,
+
+    /// The format to provide the output in.
+    ///
+    /// Default is "basic"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<CardMetadataFormat>,
 }

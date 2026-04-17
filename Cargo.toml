@@ -1,6 +1,6 @@
 [package]
 name = "checkout"
-version = "0.3.1"
+version = "0.4.1"
 authors = ["Trevor Wilson <trevor@telco.in>"]
 edition = "2018"
 
