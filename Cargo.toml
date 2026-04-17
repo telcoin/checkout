@@ -1,6 +1,6 @@
 [package]
 name = "checkout"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Trevor Wilson <trevor@telco.in>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 reqwest = { version = "0.12.14", features = ["json"] }
 serde = { version = "1.0.136", features = ["derive"] }
 thiserror = "1.0.24"
-secrecy = "0.8.0"
+secrecy = "0.10"
 bigdecimal = { version = "0.4.7", features = ["serde"] } # must satisfy diesel requirements
 
 [dev-dependencies]

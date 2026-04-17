@@ -163,8 +163,8 @@ impl Client {
     /// - [`Error::ParseEnvironment`]
     pub fn from_env() -> Result<Client, ParseEnvironmentError> {
         Ok(Client::new(
-            SecretString::new(std::env::var("CKO_USERNAME").unwrap()),
-            SecretString::new(std::env::var("CKO_PASSWORD").unwrap()),
+            SecretString::from(std::env::var("CKO_USERNAME").unwrap()),
+            SecretString::from(std::env::var("CKO_PASSWORD").unwrap()),
             std::env::var("CKO_ENVIRONMENT").unwrap().parse()?,
         ))
     }
@@ -423,7 +423,7 @@ mod tests {
     fn client() -> &'static Client {
         static INSTANCE: OnceCell<Client> = OnceCell::new();
         INSTANCE.get_or_init(|| {
-            let dotenv_var = |key: &str| SecretString::new(dotenvy::var(key).expect(key));
+            let dotenv_var = |key: &str| SecretString::from(dotenvy::var(key).expect(key));
             Client::new(
                 dotenv_var("CKO_USERNAME"),
                 dotenv_var("CKO_PASSWORD"),
